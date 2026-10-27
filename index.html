@@ -1,701 +1,418 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Éttermi Ellenőr & Számlamegosztó v1.9.0</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
-            padding: 16px;
-            max-width: 600px;
-            margin: 0 auto;
-            min-height: 100vh;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 14px;
-        }
-        h1 {
-            font-size: 1.3rem;
-            color: #ffd700;
-            letter-spacing: 0.5px;
-        }
-        .version-tag {
-            font-size: 0.75rem;
-            color: #888;
-            margin-top: 2px;
-        }
-        .nav-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            font-weight: bold;
-            cursor: pointer;
-            background-color: #222;
-            color: #888;
-        }
-        .tab-btn.active {
-            background-color: #ffd700;
-            color: #121212;
-        }
-        .card {
-            background-color: #1e1e1e;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            border: 1px solid #333;
-        }
-        .btn {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 8px;
-            background-color: #ffd700;
-            color: #121212;
-            display: inline-block;
-            text-align: center;
-        }
-        .btn-secondary {
-            background-color: #333;
-            color: #ffd700;
-            border: 1px solid #ffd700;
-        }
-        .btn-success {
-            background-color: #2e7d32;
-            color: #ffffff;
-            border: none;
-            font-size: 1.1rem;
-        }
-        .file-upload-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
-        }
-        .file-upload-wrapper input[type=file] {
-            font-size: 100px;
-            position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            cursor: pointer;
-        }
-        input[type=text], input[type=number], select {
-            width: 100%;
-            padding: 12px;
-            margin-top: 8px;
-            margin-bottom: 12px;
-            background-color: #2a2a2a;
-            border: 1px solid #444;
-            color: #fff;
-            border-radius: 8px;
-            font-size: 1rem;
-        }
-        .item-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #2a2a2a;
-        }
-        .item-info { flex: 1; }
-        .item-title { font-size: 1rem; font-weight: 500; }
-        .item-price { color: #ffd700; font-size: 0.9rem; }
-        .item-controls { display: flex; align-items: center; gap: 8px; }
-        .qty-btn {
-            background: #333;
-            color: #fff;
-            border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-        .total-box {
-            background-color: #262626;
-            padding: 16px;
-            border-radius: 10px;
-            text-align: center;
-            margin-top: 16px;
-            border: 1px solid #ffd700;
-        }
-        .total-price {
-            font-size: 1.6rem;
-            font-weight: bold;
-            color: #ffd700;
-            margin-top: 4px;
-        }
-        .hidden { display: none; }
-        .person-tabs {
-            display: flex;
-            gap: 6px;
-            overflow-x: auto;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
-        }
-        .person-tab {
-            background: #2a2a2a;
-            color: #aaa;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-weight: bold;
-            white-space: nowrap;
-        }
-        .person-tab.active {
-            background: #ffd700;
-            color: #121212;
-        }
-        .loading {
-            text-align: center;
-            color: #ffd700;
-            padding: 15px;
-            font-weight: bold;
-        }
-        .save-section, .manual-section {
-            background-color: #252525;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 14px;
-            border: 1px dashed #555;
-        }
-
-        /* ZOOM & CROP FELÜLET */
-        .zoom-wrapper {
-            background-color: #000;
-            border-radius: 10px;
-            border: 2px solid #ffd700;
-            margin-top: 12px;
-            padding: 8px;
-            text-align: center;
-        }
-        canvas#zoomCanvas {
-            width: 100%;
-            max-height: 320px;
-            background-color: #000;
-            border-radius: 6px;
-            touch-action: none;
-            display: block;
-            cursor: grab;
-        }
-        .zoom-controls {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-        .zoom-btn {
-            flex: 1;
-            padding: 10px;
-            background-color: #333;
-            color: #ffd700;
-            border: 1px solid #ffd700;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Éttermi Ellenőr & Számlamegosztó</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#121212;color:#e0e0e0;padding:16px;max-width:600px;margin:0 auto;min-height:100vh}
+button,.tab-btn{-webkit-user-select:none;user-select:none;font-family:inherit}
+.header{text-align:center;margin-bottom:14px}
+h1{font-size:1.3rem;color:#ffd700}
+.version-tag{font-size:.75rem;color:#888;margin-top:2px}
+.nav-tabs{display:flex;gap:8px;margin-bottom:16px}
+.tab-btn{flex:1;padding:12px;border:none;border-radius:10px;font-size:.95rem;font-weight:bold;cursor:pointer;background:#222;color:#888}
+.tab-btn.active{background:#ffd700;color:#121212}
+.card{background:#1e1e1e;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 4px 10px rgba(0,0,0,.5);border:1px solid #333}
+.btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:1rem;font-weight:bold;cursor:pointer;margin-top:8px;background:#ffd700;color:#121212;display:block;text-align:center}
+.btn[disabled]{opacity:.5}
+.btn-secondary{background:#333;color:#ffd700;border:1px solid #ffd700}
+.btn-success{background:#2e7d32;color:#fff;font-size:1.1rem}
+input[type=text],input[type=number],select{width:100%;padding:12px;margin-top:8px;margin-bottom:12px;background:#2a2a2a;border:1px solid #444;color:#fff;border-radius:8px;font-size:1rem}
+input[type=file]{display:none}
+.item-row{display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid #2a2a2a}
+.item-row input{margin:0;padding:8px;font-size:.95rem}
+.item-row .nm{flex:1;min-width:0}
+.item-row .pr{width:78px;text-align:right}
+.item-row .del{background:none;border:none;color:#a55;font-size:1.2rem;width:28px;height:32px}
+.qty{display:flex;align-items:center;gap:6px}
+.qty-btn{background:#333;color:#fff;border:none;width:34px;height:34px;border-radius:6px;font-weight:bold;font-size:1.1rem}
+.qty span{font-weight:bold;min-width:20px;text-align:center}
+.total-box{background:#262626;padding:16px;border-radius:10px;text-align:center;margin-top:16px;border:1px solid #ffd700}
+.total-price{font-size:1.6rem;font-weight:bold;color:#ffd700;margin-top:4px}
+.hidden{display:none!important}
+.person-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px}
+.person-tab{background:#2a2a2a;color:#aaa;border:none;padding:8px 14px;border-radius:8px;font-weight:bold;white-space:nowrap}
+.person-tab.active{background:#ffd700;color:#121212}
+.status{text-align:center;padding:10px;font-weight:bold;color:#ffd700}
+.status.err{color:#ff7777}.status.ok{color:#4caf50}
+.bar{height:8px;background:#333;border-radius:4px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:#ffd700}
+.box{background:#252525;padding:12px;border-radius:8px;margin-top:14px;border:1px dashed #555}
+.zoom-wrapper{background:#000;border-radius:10px;border:2px solid #ffd700;margin-top:12px;padding:8px;text-align:center}
+canvas#zoomCanvas{width:100%;height:320px;background:#000;border-radius:6px;touch-action:none;display:block}
+.zoom-controls{display:flex;gap:8px;margin-top:8px}
+.zoom-btn{flex:1;padding:10px;background:#333;color:#ffd700;border:1px solid #ffd700;border-radius:8px;font-weight:bold;font-size:.9rem}
+.hint{font-size:.8rem;color:#aaa;margin-bottom:6px}
+.small{font-size:.85rem;color:#888}
+</style>
 </head>
 <body>
+<div class="header">
+  <h1>Költség & Számla Ellenőr</h1>
+  <div class="version-tag">Verzió: v2.0</div>
+</div>
 
-    <div class="header">
-        <h1>Költség & Számla Ellenőr</h1>
-        <div class="version-tag">Verzió: v1.9.0</div>
+<div class="nav-tabs">
+  <button class="tab-btn active" id="btnMode1" onclick="switchMode(1)">1. Ellenőrző</button>
+  <button class="tab-btn" id="btnMode2" onclick="switchMode(2)">2. Baráti megosztó</button>
+</div>
+
+<div class="card">
+  <h4 style="color:#ffd700">Mentett étlapok</h4>
+  <select id="savedMenusSelect" onchange="loadSavedMenu()"><option value="">-- Válassz a mentett étlapok közül --</option></select>
+</div>
+
+<div id="mode1Section" class="card">
+  <h3 style="margin-bottom:12px;color:#fff">Étlap / blokk beolvasása</h3>
+  <button class="btn" onclick="document.getElementById('menuPhoto').click()">📸 Étlap fotózása</button>
+  <input type="file" id="menuPhoto" accept="image/*" onchange="loadPhoto(this)">
+
+  <div id="cropWrapper" class="zoom-wrapper hidden">
+    <div class="hint">Húzd a képet, két ujjal nagyíthatsz. Csak az látszó rész lesz beolvasva.</div>
+    <canvas id="zoomCanvas"></canvas>
+    <div class="zoom-controls">
+      <button class="zoom-btn" onclick="adjustZoom(1.25)">+ Nagyít</button>
+      <button class="zoom-btn" onclick="adjustZoom(0.8)">− Kicsinyít</button>
+      <button class="zoom-btn" onclick="resetZoom()">Alaphelyzet</button>
     </div>
+    <button class="btn btn-success" id="scanBtn" onclick="scan()">✓ BEOLVASÁS INDÍTÁSA</button>
+  </div>
+  <div id="loadingStatus"></div>
 
-    <div class="nav-tabs">
-        <button class="tab-btn active" id="btnMode1" onclick="switchMode(1)">1. Átverés Ellenőrző</button>
-        <button class="tab-btn" id="btnMode2" onclick="switchMode(2)">2. Baráti Megosztó</button>
+  <div id="itemList1" style="margin-top:16px"></div>
+
+  <details style="margin-top:14px">
+    <summary style="cursor:pointer;color:#aaa;font-size:.9rem">+ Új tétel hozzáadása kézzel</summary>
+    <div class="box">
+      <input type="text" id="manualName" placeholder="Étel/ital neve" style="margin-bottom:6px">
+      <input type="number" id="manualPrice" inputmode="numeric" placeholder="Ár (Ft)" style="margin-bottom:6px">
+      <button class="btn btn-secondary" style="margin-top:0" onclick="addManualItem()">Hozzáadás</button>
     </div>
-
-    <!-- MENTETT ÉTLAPOK -->
-    <div class="card">
-        <h4 style="color: #ffd700; margin-bottom: 4px;">Mentett étlap megnyitása</h4>
-        <select id="savedMenusSelect" onchange="loadSavedMenu()">
-            <option value="">-- Válassz a mentett étlapok közül --</option>
-        </select>
-    </div>
-
-    <!-- 1. MÓD: ÁTVERÉS ELLENŐRZŐ -->
-    <div id="mode1Section" class="card">
-        <h3 style="margin-bottom: 12px; color: #fff;">Étlap beolvasása</h3>
-        
-        <div class="file-upload-wrapper">
-            <button class="btn">📸 Étlap fotózása</button>
-            <input type="file" id="menuPhoto" accept="image/*" capture="environment" onchange="loadPhotoToCanvas()">
-        </div>
-
-        <!-- NAGYÍTÓ ÉS MOZGATÓ DOBOZ -->
-        <div id="cropWrapper" class="zoom-wrapper hidden">
-            <div style="font-size:0.8rem; color:#aaa; margin-bottom:6px;">👉 Húzd a képet az ujjaddal, vagy nagyíts a gombokkal:</div>
-            <canvas id="zoomCanvas"></canvas>
-            <div class="zoom-controls">
-                <button class="zoom-btn" onclick="adjustZoom(1.25)">🔍 + Nagyítás</button>
-                <button class="zoom-btn" onclick="adjustZoom(0.8)">🔍 - Kicsinyítés</button>
-                <button class="zoom-btn" onclick="resetZoom()">🔄 Alaphelyzet</button>
-            </div>
-            <button class="btn btn-success" style="margin-top:10px;" onclick="processCanvasImage()">✓ BEOLVASÁS INDÍTÁSA</button>
-        </div>
-        
-        <div id="loadingStatus"></div>
-
-        <div id="itemList1" style="margin-top: 16px;"></div>
-
-        <!-- KÉZI HOZZÁADÁS (BIZTOSÍTÉK) -->
-        <details style="margin-top: 14px;">
-            <summary style="cursor: pointer; color: #888; font-size: 0.85rem;">+ Új tétel hozzáadása kézzel</summary>
-            <div class="manual-section">
-                <input type="text" id="manualName" placeholder="Étel/ital neve" style="margin-bottom:6px;">
-                <input type="number" id="manualPrice" placeholder="Ár (Ft)" style="margin-bottom:6px;">
-                <button class="btn btn-secondary" style="margin-top:0;" onclick="addManualItem()">Hozzáadás</button>
-            </div>
-        </details>
-
-        <!-- Mentés szekció -->
-        <div id="saveMenuBox" class="save-section hidden">
-            <h4 style="color: #fff; margin-bottom: 6px;">Étlap elmentése későbbre</h4>
-            <input type="text" id="menuNameInput" placeholder="Étterem neve (pl. Pelikán Csárda)">
-            <button class="btn btn-secondary" onclick="saveCurrentMenu()">Étlap Mentése</button>
-        </div>
-
-        <div class="total-box">
-            <div>Számított Összeg:</div>
-            <div class="total-price" id="totalPrice1">0 Ft</div>
-        </div>
-    </div>
-
-    <!-- 2. MÓD: BARÁTI MEGOSZTÓ -->
-    <div id="mode2Section" class="card hidden">
-        <h3 style="margin-bottom: 8px; color: #fff;">Barátok megosztott számlája</h3>
-        <label>Kik vannak jelen? (Vesszővel elválasztva)</label>
-        <input type="text" id="personNames" value="Peti, Kati, Balázs" placeholder="pl. Peti, Kati, Balázs">
-        <button class="btn btn-secondary" onclick="initPersons()">Személyek rögzítése</button>
-
-        <div id="splitContainer" class="hidden" style="margin-top: 16px;">
-            <div class="person-tabs" id="personTabsContainer"></div>
-            <div id="itemList2"></div>
-        </div>
-
-        <div class="total-box" style="margin-top: 16px;">
-            <div>Összesen / Fejenként:</div>
-            <div class="total-price" id="totalPrice2">0 Ft</div>
-            <div id="perPersonBreakdown" style="font-size: 0.9rem; color: #aaa; margin-top: 8px;"></div>
-        </div>
-    </div>
-
-    <script>
-        let currentMode = 1;
-        let items = [];
-        let persons = ["Peti", "Kati", "Balázs"];
-        let activePerson = "Peti";
-
-        let loadedImg = new Image();
-        let scale = 1;
-        let offsetX = 0;
-        let offsetY = 0;
-        let isDragging = false;
-        let startX = 0;
-        let startY = 0;
-
-        window.onload = function() {
-            refreshSavedMenusList();
-            renderList1();
-            initCanvasEvents();
-        };
-
-        function switchMode(m) {
-            currentMode = m;
-            if(m === 1) {
-                document.getElementById('btnMode1').classList.add('active');
-                document.getElementById('btnMode2').classList.remove('active');
-                document.getElementById('mode1Section').classList.remove('hidden');
-                document.getElementById('mode2Section').classList.add('hidden');
-                renderList1();
-            } else {
-                document.getElementById('btnMode2').classList.add('active');
-                document.getElementById('btnMode1').classList.remove('active');
-                document.getElementById('mode2Section').classList.remove('hidden');
-                document.getElementById('mode1Section').classList.add('hidden');
-                initPersons();
-            }
-        }
-
-        function loadPhotoToCanvas() {
-            const fileInput = document.getElementById('menuPhoto');
-            if (!fileInput.files || fileInput.files.length === 0) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                loadedImg = new Image();
-                loadedImg.onload = function() {
-                    scale = 1;
-                    offsetX = 0;
-                    offsetY = 0;
-                    document.getElementById('cropWrapper').classList.remove('hidden');
-                    drawCanvas();
-                };
-                loadedImg.src = e.target.result;
-            };
-            reader.readAsDataURL(fileInput.files[0]);
-        }
-
-        function drawCanvas() {
-            const canvas = document.getElementById('zoomCanvas');
-            const ctx = canvas.getContext('2d');
-
-            canvas.width = canvas.clientWidth;
-            canvas.height = 300;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#111";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.save();
-            ctx.translate(canvas.width / 2 + offsetX, canvas.height / 2 + offsetY);
-            ctx.scale(scale, scale);
-
-            let drawW = canvas.width;
-            let drawH = (loadedImg.height / loadedImg.width) * drawW;
-            ctx.drawImage(loadedImg, -drawW / 2, -drawH / 2, drawW, drawH);
-
-            ctx.restore();
-        }
-
-        function adjustZoom(factor) {
-            scale *= factor;
-            scale = Math.min(Math.max(0.5, scale), 6);
-            drawCanvas();
-        }
-
-        function resetZoom() {
-            scale = 1;
-            offsetX = 0;
-            offsetY = 0;
-            drawCanvas();
-        }
-
-        function initCanvasEvents() {
-            const canvas = document.getElementById('zoomCanvas');
-
-            // Érintéses (mobil) mozgás
-            canvas.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    isDragging = true;
-                    startX = e.touches[0].clientX - offsetX;
-                    startY = e.touches[0].clientY - offsetY;
-                }
-            });
-
-            canvas.addEventListener('touchmove', (e) => {
-                if (isDragging && e.touches.length === 1) {
-                    offsetX = e.touches[0].clientX - startX;
-                    offsetY = e.touches[0].clientY - startY;
-                    drawCanvas();
-                }
-            });
-
-            canvas.addEventListener('touchend', () => { isDragging = false; });
-
-            // Egérrel történő mozgás (ha gépen teszteli)
-            canvas.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                startX = e.clientX - offsetX;
-                startY = e.clientY - offsetY;
-            });
-
-            canvas.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    offsetX = e.clientX - startX;
-                    offsetY = e.clientY - startY;
-                    drawCanvas();
-                }
-            });
-
-            canvas.addEventListener('mouseup', () => { isDragging = false; });
-            canvas.addEventListener('mouseleave', () => { isDragging = false; });
-        }
-
-        async function processCanvasImage() {
-            const statusDiv = document.getElementById('loadingStatus');
-            const canvas = document.getElementById('zoomCanvas');
-
-            statusDiv.innerHTML = '<div class="loading">🔍 Kép elemzése és AI feldolgozás...</div>';
-
-            const base64Image = canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
-
-            try {
-                const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: "SZIGORÚ UTASÍTÁS: Olvasd ki erről a kivágott/ránagyított képről az összes látható ételt, italt és árat! Add vissza tiszta JSON tömbként: [{\"name\":\"Tétel neve\",\"price\":1200}]. Semmi más szöveget ne írj!" },
-                                { inline_data: { mime_type: "image/jpeg", data: base64Image } }
-                            ]
-                        }]
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data && data.candidates && data.candidates[0].content.parts[0].text) {
-                    let textResult = data.candidates[0].content.parts[0].text;
-                    textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
-                    let parsedItems = JSON.parse(textResult);
-
-                    if (Array.isArray(parsedItems) && parsedItems.length > 0) {
-                        items = parsedItems.map((item, index) => ({
-                            id: Date.now() + index,
-                            name: item.name || "Tétel",
-                            price: Number(item.price) || 0,
-                            qty1: 0,
-                            qtyPerPerson: {}
-                        }));
-                        statusDiv.innerHTML = '<div style="color: #4caf50; text-align:center; margin: 10px 0;">Sikeresen beolvasva!</div>';
-                        document.getElementById('cropWrapper').classList.add('hidden');
-                    } else {
-                        throw new Error("Nem találhatók tételek a képen.");
-                    }
-                } else {
-                    throw new Error("Érvénytelen válasz a szervertől.");
-                }
-
-            } catch (error) {
-                console.error(error);
-                statusDiv.innerHTML = '<div style="color: #ff6666; text-align:center; margin: 10px 0;">Nem sikerült kiolvasni. Nagyíts közelebb a gombokkal, vagy használd alul a kézi rögzítést!</div>';
-            }
-
-            if (items.length > 0) {
-                document.getElementById('saveMenuBox').classList.remove('hidden');
-            }
-            renderList1();
-            if(currentMode === 2) renderList2();
-        }
-
-        function addManualItem() {
-            let name = document.getElementById('manualName').value.trim();
-            let price = Number(document.getElementById('manualPrice').value);
-
-            if(!name || !price) {
-                alert("Kérlek add meg a nevet és az árat is!");
-                return;
-            }
-
-            items.push({
-                id: Date.now(),
-                name: name,
-                price: price,
-                qty1: 0,
-                qtyPerPerson: {}
-            });
-
-            document.getElementById('manualName').value = '';
-            document.getElementById('manualPrice').value = '';
-            document.getElementById('saveMenuBox').classList.remove('hidden');
-            renderList1();
-            if(currentMode === 2) renderList2();
-        }
-
-        function saveCurrentMenu() {
-            const nameInput = document.getElementById('menuNameInput').value.trim();
-            if (!nameInput) {
-                alert("Kérlek adj meg egy nevet az étlapnak!");
-                return;
-            }
-            if (items.length === 0) {
-                alert("Nincs menthető étlap!");
-                return;
-            }
-
-            let savedMenus = JSON.parse(localStorage.getItem('saved_restaurant_menus') || '{}');
-            savedMenus[nameInput] = items.map(i => ({ name: i.name, price: i.price }));
-            localStorage.setItem('saved_restaurant_menus', JSON.stringify(savedMenus));
-
-            alert(`'${nameInput}' sikeresen elmentve!`);
-            document.getElementById('menuNameInput').value = '';
-            refreshSavedMenusList();
-        }
-
-        function refreshSavedMenusList() {
-            const select = document.getElementById('savedMenusSelect');
-            select.innerHTML = '<option value="">-- Válassz a mentett étlapok közül --</option>';
-
-            let savedMenus = JSON.parse(localStorage.getItem('saved_restaurant_menus') || '{}');
-            for (let name in savedMenus) {
-                let opt = document.createElement('option');
-                opt.value = name;
-                opt.innerText = name;
-                select.appendChild(opt);
-            }
-        }
-
-        function loadSavedMenu() {
-            const select = document.getElementById('savedMenusSelect');
-            const selectedName = select.value;
-            if (!selectedName) return;
-
-            let savedMenus = JSON.parse(localStorage.getItem('saved_restaurant_menus') || '{}');
-            let loadedItems = savedMenus[selectedName];
-
-            if (loadedItems) {
-                items = loadedItems.map((item, index) => ({
-                    id: Date.now() + index,
-                    name: item.name,
-                    price: Number(item.price),
-                    qty1: 0,
-                    qtyPerPerson: {}
-                }));
-
-                document.getElementById('saveMenuBox').classList.remove('hidden');
-                document.getElementById('loadingStatus').innerHTML = `<div style="color: #ffd700; text-align:center; margin: 10px 0;">Betöltve: <b>${selectedName}</b></div>`;
-                renderList1();
-                if(currentMode === 2) renderList2();
-            }
-        }
-
-        function renderList1() {
-            let container = document.getElementById('itemList1');
-            if(items.length === 0) {
-                container.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">Még nincsenek tételek. Fotózd be az étlapot a gombra kattintva!</p>';
-                return;
-            }
-            let html = '';
-            items.forEach(i => {
-                html += `<div class="item-row">
-                    <div class="item-info">
-                        <div class="item-title">${i.name}</div>
-                        <div class="item-price">${i.price} Ft / db</div>
-                    </div>
-                    <div class="item-controls">
-                        <button class="qty-btn" onclick="changeQty1(${i.id}, -1)">-</button>
-                        <span style="font-weight:bold; width:24px; text-align:center;">${i.qty1}</span>
-                        <button class="qty-btn" onclick="changeQty1(${i.id}, 1)">+</button>
-                    </div>
-                </div>`;
-            });
-            container.innerHTML = html;
-            calcTotal1();
-        }
-
-        function changeQty1(id, delta) {
-            let item = items.find(x => x.id === id);
-            if(item) {
-                item.qty1 = Math.max(0, item.qty1 + delta);
-                renderList1();
-            }
-        }
-
-        function calcTotal1() {
-            let sum = items.reduce((acc, curr) => acc + (curr.qty1 * curr.price), 0);
-            document.getElementById('totalPrice1').innerText = sum.toLocaleString() + " Ft";
-        }
-
-        function initPersons() {
-            let val = document.getElementById('personNames').value;
-            persons = val.split(',').map(s => s.trim()).filter(s => s.length > 0);
-            if(persons.length === 0) persons = ["Vendég 1"];
-            activePerson = persons[0];
-
-            document.getElementById('splitContainer').classList.remove('hidden');
-            renderPersonTabs();
-            renderList2();
-        }
-
-        function renderPersonTabs() {
-            let html = '';
-            persons.forEach(p => {
-                html += `<button class="person-tab ${p === activePerson ? 'active' : ''}" onclick="selectPerson('${p}')">${p}</button>`;
-            });
-            document.getElementById('personTabsContainer').innerHTML = html;
-        }
-
-        function selectPerson(p) {
-            activePerson = p;
-            renderPersonTabs();
-            renderList2();
-        }
-
-        function renderList2() {
-            let container = document.getElementById('itemList2');
-            if(items.length === 0) {
-                container.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">Előbb fotózz be egy étlapot az 1. módban!</p>';
-                return;
-            }
-            let html = '';
-            items.forEach(i => {
-                let q = (i.qtyPerPerson[activePerson] || 0);
-                html += `<div class="item-row">
-                    <div class="item-info">
-                        <div class="item-title">${i.name} (${activePerson}-nek)</div>
-                        <div class="item-price">${i.price} Ft / db</div>
-                    </div>
-                    <div class="item-controls">
-                        <button class="qty-btn" onclick="changeQty2(${i.id}, -1)">-</button>
-                        <span style="font-weight:bold; width:24px; text-align:center;">${q}</span>
-                        <button class="qty-btn" onclick="changeQty2(${i.id}, 1)">+</button>
-                    </div>
-                </div>`;
-            });
-            container.innerHTML = html;
-            calcTotal2();
-        }
-
-        function changeQty2(id, delta) {
-            let item = items.find(x => x.id === id);
-            if(item) {
-                if(!item.qtyPerPerson[activePerson]) item.qtyPerPerson[activePerson] = 0;
-                item.qtyPerPerson[activePerson] = Math.max(0, item.qtyPerPerson[activePerson] + delta);
-                renderList2();
-            }
-        }
-
-        function calcTotal2() {
-            let totalSum = 0;
-            let personTotals = {};
-            persons.forEach(p => personTotals[p] = 0);
-
-            items.forEach(i => {
-                persons.forEach(p => {
-                    let q = (i.qtyPerPerson[p] || 0);
-                    let sub = q * i.price;
-                    personTotals[p] += sub;
-                    totalSum += sub;
-                });
-            });
-
-            document.getElementById('totalPrice2').innerText = totalSum.toLocaleString() + " Ft";
-
-            let breakdownText = "";
-            persons.forEach(p => {
-                breakdownText += `${p}: ${personTotals[p].toLocaleString()} Ft | `;
-            });
-            document.getElementById('perPersonBreakdown').innerText = breakdownText;
-        }
-    </script>
+  </details>
+
+  <div id="saveMenuBox" class="box hidden">
+    <h4 style="color:#fff;margin-bottom:6px">Étlap elmentése későbbre</h4>
+    <input type="text" id="menuNameInput" placeholder="Étterem neve (pl. Kocsis Csárda)">
+    <button class="btn btn-secondary" style="margin-top:0" onclick="saveCurrentMenu()">Étlap mentése</button>
+    <button class="btn btn-secondary hidden" id="delMenuBtn" onclick="deleteSavedMenu()">Kiválasztott mentett étlap törlése</button>
+  </div>
+
+  <label class="small" style="display:block;margin-top:14px">Szervizdíj (%)</label>
+  <input type="number" id="svc" inputmode="decimal" value="0" min="0" max="30" oninput="recalc()">
+
+  <div class="total-box">
+    <div>Számított összeg:</div>
+    <div class="total-price" id="totalPrice1">0 Ft</div>
+    <div class="small" id="svcInfo1"></div>
+  </div>
+</div>
+
+<div id="mode2Section" class="card hidden">
+  <h3 style="margin-bottom:8px;color:#fff">Barátok megosztott számlája</h3>
+  <label class="small">Kik vannak jelen? (vesszővel elválasztva)</label>
+  <input type="text" id="personNames" value="Peti, Kati, Balázs">
+  <button class="btn btn-secondary" style="margin-top:0" onclick="initPersons()">Személyek rögzítése</button>
+  <div id="splitContainer" class="hidden" style="margin-top:16px">
+    <div class="person-tabs" id="personTabsContainer"></div>
+    <div id="itemList2"></div>
+  </div>
+  <div class="total-box">
+    <div>Összesen:</div>
+    <div class="total-price" id="totalPrice2">0 Ft</div>
+    <div id="perPersonBreakdown" style="font-size:.95rem;color:#ccc;margin-top:8px;line-height:1.6"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+var currentMode = 1, items = [], persons = [], activePerson = '';
+var img = null, scale = 1, offX = 0, offY = 0;
+var LS_KEY = 'saved_restaurant_menus';
+
+function lsGet(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e){ return {}; } }
+function lsSet(o){ try { localStorage.setItem(LS_KEY, JSON.stringify(o)); return true; } catch(e){ return false; } }
+function fmt(n){ return Math.round(n).toLocaleString('hu-HU') + ' Ft'; }
+function el(t, props, kids){ var e = document.createElement(t); for (var k in (props||{})) { if (k==='class') e.className = props[k]; else if (k==='text') e.textContent = props[k]; else e[k] = props[k]; } (kids||[]).forEach(function(c){ e.appendChild(c); }); return e; }
+function setStatus(msg, cls){ var s = document.getElementById('loadingStatus'); s.innerHTML=''; if(msg) s.appendChild(el('div',{class:'status '+(cls||''),text:msg})); }
+
+window.onload = function(){ refreshSaved(); renderList1(); initCanvas(); };
+
+function switchMode(m){
+  currentMode = m;
+  document.getElementById('btnMode1').classList.toggle('active', m===1);
+  document.getElementById('btnMode2').classList.toggle('active', m===2);
+  document.getElementById('mode1Section').classList.toggle('hidden', m!==1);
+  document.getElementById('mode2Section').classList.toggle('hidden', m!==2);
+  if (m===1) renderList1(); else initPersons();
+}
+
+/* ---------- KÉP ---------- */
+function loadPhoto(input){
+  if (!input.files || !input.files[0]) return;
+  var url = URL.createObjectURL(input.files[0]);
+  var im = new Image();
+  im.onload = function(){
+    img = im; scale = 1; offX = 0; offY = 0;
+    document.getElementById('cropWrapper').classList.remove('hidden');
+    setStatus('');
+    drawCanvas();
+  };
+  im.onerror = function(){ setStatus('A képet nem sikerült megnyitni.', 'err'); };
+  im.src = url;
+  input.value = '';
+}
+function fitW(cv){ return cv.width; }
+function drawCanvas(){
+  var cv = document.getElementById('zoomCanvas');
+  var dpr = window.devicePixelRatio || 1;
+  var w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w*dpr)) { cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  var ctx = cv.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle = '#111'; ctx.fillRect(0,0,cv.width,cv.height);
+  if (!img) return;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  var dw = w, dh = img.height / img.width * dw;
+  ctx.translate(w/2 + offX, h/2 + offY);
+  ctx.scale(scale, scale);
+  ctx.drawImage(img, -dw/2, -dh/2, dw, dh);
+}
+function adjustZoom(f){ scale = Math.min(Math.max(0.3, scale*f), 8); drawCanvas(); }
+function resetZoom(){ scale = 1; offX = 0; offY = 0; drawCanvas(); }
+
+function initCanvas(){
+  var cv = document.getElementById('zoomCanvas');
+  var mode = null, sx, sy, d0, s0;
+  function dist(t){ return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
+  cv.addEventListener('touchstart', function(e){
+    e.preventDefault();
+    if (e.touches.length === 2) { mode = 'pinch'; d0 = dist(e.touches); s0 = scale; }
+    else { mode = 'drag'; sx = e.touches[0].clientX - offX; sy = e.touches[0].clientY - offY; }
+  }, {passive:false});
+  cv.addEventListener('touchmove', function(e){
+    e.preventDefault();
+    if (mode === 'pinch' && e.touches.length === 2) { scale = Math.min(Math.max(0.3, s0 * dist(e.touches)/d0), 8); drawCanvas(); }
+    else if (mode === 'drag' && e.touches.length === 1) { offX = e.touches[0].clientX - sx; offY = e.touches[0].clientY - sy; drawCanvas(); }
+  }, {passive:false});
+  cv.addEventListener('touchend', function(e){
+    if (e.touches.length === 1) { mode = 'drag'; sx = e.touches[0].clientX - offX; sy = e.touches[0].clientY - offY; } else mode = null;
+  });
+  var md = false;
+  cv.addEventListener('mousedown', function(e){ md = true; sx = e.clientX - offX; sy = e.clientY - offY; });
+  window.addEventListener('mousemove', function(e){ if (md) { offX = e.clientX - sx; offY = e.clientY - sy; drawCanvas(); } });
+  window.addEventListener('mouseup', function(){ md = false; });
+  cv.addEventListener('wheel', function(e){ e.preventDefault(); adjustZoom(e.deltaY < 0 ? 1.15 : 0.87); }, {passive:false});
+  window.addEventListener('resize', function(){ if (img) drawCanvas(); });
+}
+
+/* A látszó részt az EREDETI felbontásból vágjuk ki, így éles marad */
+function cropVisible(){
+  var cv = document.getElementById('zoomCanvas');
+  var w = cv.clientWidth, h = cv.clientHeight;
+  var dw = w, k = img.width / dw;               // kép px / canvas css px (scale=1 mellett)
+  function toImgX(cx){ return ((cx - w/2 - offX)/scale + dw/2) * k; }
+  function toImgY(cy){ var dh = img.height/img.width*dw; return ((cy - h/2 - offY)/scale + dh/2) * k; }
+  var x0 = toImgX(0), x1 = toImgX(w), y0 = toImgY(0), y1 = toImgY(h);
+  var sx0 = Math.max(0,x0), sy0 = Math.max(0,y0), sx1 = Math.min(img.width,x1), sy1 = Math.min(img.height,y1);
+  var sw = sx1 - sx0, sh = sy1 - sy0;
+  if (sw < 10 || sh < 10) return null;
+  var f = 1800 / sw; if (f > 3) f = 3; if (f < 0.5) f = 0.5;   // cél: ~1800px széles
+  var out = document.createElement('canvas');
+  out.width = Math.round(sw*f); out.height = Math.round(sh*f);
+  var c = out.getContext('2d');
+  c.imageSmoothingQuality = 'high';
+  c.drawImage(img, sx0, sy0, sw, sh, 0, 0, out.width, out.height);
+  // szürkeárnyalat + kontraszt-nyújtás
+  var d = c.getImageData(0,0,out.width,out.height), p = d.data, hist = new Array(256).fill(0), i, g;
+  for (i = 0; i < p.length; i += 4) { g = (p[i]*0.299 + p[i+1]*0.587 + p[i+2]*0.114)|0; p[i] = g; hist[g]++; }
+  var tot = p.length/4, lo = 0, hi = 255, acc = 0;
+  for (i = 0; i < 256; i++) { acc += hist[i]; if (acc > tot*0.01) { lo = i; break; } }
+  acc = 0;
+  for (i = 255; i >= 0; i--) { acc += hist[i]; if (acc > tot*0.01) { hi = i; break; } }
+  if (hi - lo < 30) { lo = 0; hi = 255; }
+  for (i = 0; i < p.length; i += 4) { g = (p[i]-lo)*255/(hi-lo); g = g<0?0:g>255?255:g; p[i]=p[i+1]=p[i+2]=g; p[i+3]=255; }
+  c.putImageData(d,0,0);
+  return out;
+}
+
+/* ---------- OCR ---------- */
+var worker = null;
+async function getWorker(){
+  if (worker) return worker;
+  if (typeof Tesseract === 'undefined') throw new Error('A felismerő modul nem töltődött be. Kell hozzá internet az első használatkor.');
+  worker = await Tesseract.createWorker('hun', 1, {
+    workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+    corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/',
+    langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/hun@1.0.0/4.0.0_best_int',
+    logger: function(m){
+      var b = document.getElementById('bar');
+      if (m.status === 'recognizing text' && b) b.style.width = Math.round(m.progress*100) + '%';
+      var t = document.getElementById('stxt');
+      if (t) t.textContent = m.status === 'recognizing text' ? 'Szöveg felismerése… ' + Math.round(m.progress*100) + '%' : 'Előkészítés (első alkalommal pár másodperc)…';
+    }
+  });
+  return worker;
+}
+
+function parseMenu(text){
+  var res = [];
+  text.split(/\r?\n/).forEach(function(line){
+    line = line.replace(/[|_~=]+/g,' ').replace(/\s+/g,' ').trim();
+    if (line.length < 4) return;
+    var m = line.match(/^(.*?)[\s.·…:\-–—]*?((?:\d{1,3}(?:[ .]\d{3})+)|\d{3,6})\s*(?:Ft|FT|HUF|forint|,-|\.-|-)?\s*$/);
+    if (!m) return;
+    var name = m[1].replace(/[\s.·…:\-–—,]+$/,'').replace(/^[\s.·…:\-–—*•]+/,'').trim();
+    var rawP = m[2];
+    // az OCR a "0,5 l 590" -ből gyakran "0,5 1 590"-et csinál: a mértékegység "l" lesz az ár elején álló 1-es
+    if (/\d[,.]\d$/.test(name) && /^1[ .]\d{3}$/.test(rawP)) { name += ' l'; rawP = rawP.slice(2); }
+    name = name.replace(/(\d[,.]\d)\s*[1I|]$/, '$1 l');
+    var price = parseInt(rawP.replace(/[ .]/g,''), 10);
+    if (!/[A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]{2}/.test(name)) return;
+    if (/összesen|fizetend|végösszeg|szervíz|szerviz|áfa|készpénz|visszajár|kártya/i.test(name)) return;
+    if (price < 100 || price > 200000) return;
+    res.push({name: name, price: price});
+  });
+  return res;
+}
+
+async function scan(){
+  if (!img) return;
+  var btn = document.getElementById('scanBtn'); btn.disabled = true;
+  var st = document.getElementById('loadingStatus'); st.innerHTML = '';
+  st.appendChild(el('div',{class:'status'},[el('span',{id:'stxt',text:'Előkészítés…'}), el('div',{class:'bar'},[el('i',{id:'bar'})])]));
+  try {
+    var crop = cropVisible();
+    if (!crop) throw new Error('Nincs kép a látható részen.');
+    var w = await getWorker();
+    var r = await w.recognize(crop);
+    var found = parseMenu(r.data.text || '');
+    if (!found.length) {
+      setStatus('Nem találtam tételt. Nagyíts közelebb egy kisebb részre (néhány sor), jó fényben, és próbáld újra, vagy add hozzá kézzel.', 'err');
+    } else {
+      found.forEach(function(f, i){ items.push({id: Date.now()+i+Math.random(), name: f.name, price: f.price, qty1: 0, qpp: {}}); });
+      setStatus(found.length + ' tétel hozzáadva. Ellenőrizd a neveket és az árakat, a hibásat javítsd, vagy töröld (×).', 'ok');
+      document.getElementById('saveMenuBox').classList.remove('hidden');
+    }
+  } catch(err) {
+    console.error(err);
+    setStatus('Hiba: ' + (err && err.message ? err.message : err), 'err');
+  }
+  btn.disabled = false;
+  renderList1(); if (currentMode===2) renderList2();
+}
+
+/* ---------- TÉTELEK ---------- */
+function addManualItem(){
+  var n = document.getElementById('manualName').value.trim();
+  var p = Number(document.getElementById('manualPrice').value);
+  if (!n || !p) { alert('Add meg a nevet és az árat is!'); return; }
+  items.push({id: Date.now()+Math.random(), name: n, price: p, qty1: 0, qpp: {}});
+  document.getElementById('manualName').value = ''; document.getElementById('manualPrice').value = '';
+  document.getElementById('saveMenuBox').classList.remove('hidden');
+  renderList1(); if (currentMode===2) renderList2();
+}
+function byId(id){ return items.find(function(x){ return x.id === id; }); }
+function removeItem(id){ items = items.filter(function(x){ return x.id !== id; }); renderList1(); if (currentMode===2) renderList2(); }
+
+function renderList1(){
+  var c = document.getElementById('itemList1'); c.innerHTML = '';
+  if (!items.length) { c.appendChild(el('p',{class:'small',style:'text-align:center;padding:20px',text:'Még nincsenek tételek. Fotózd le az étlapot, vagy adj hozzá kézzel!'})); recalc(); return; }
+  items.forEach(function(it){
+    var nm = el('input',{type:'text',class:'nm',value:it.name}); nm.oninput = function(){ it.name = nm.value; };
+    var pr = el('input',{type:'number',class:'pr',value:it.price}); pr.setAttribute('inputmode','numeric'); pr.oninput = function(){ it.price = Number(pr.value)||0; recalc(); };
+    var q = el('span',{text:it.qty1});
+    var minus = el('button',{class:'qty-btn',text:'−'}); minus.onclick = function(){ it.qty1 = Math.max(0, it.qty1-1); q.textContent = it.qty1; recalc(); };
+    var plus = el('button',{class:'qty-btn',text:'+'}); plus.onclick = function(){ it.qty1++; q.textContent = it.qty1; recalc(); };
+    var del = el('button',{class:'del',text:'×'}); del.onclick = function(){ removeItem(it.id); };
+    c.appendChild(el('div',{class:'item-row'},[nm, pr, el('div',{class:'qty'},[minus,q,plus]), del]));
+  });
+  recalc();
+}
+function svcMul(){ var v = Number(document.getElementById('svc').value)||0; return 1 + Math.max(0,v)/100; }
+function recalc(){
+  var sum = items.reduce(function(a,i){ return a + i.qty1*i.price; }, 0), m = svcMul();
+  document.getElementById('totalPrice1').textContent = fmt(sum*m);
+  document.getElementById('svcInfo1').textContent = m>1 ? 'Ebből szervizdíj: ' + fmt(sum*(m-1)) : '';
+  if (currentMode===2) calcTotal2();
+}
+
+/* ---------- MENTÉS ---------- */
+function saveCurrentMenu(){
+  var n = document.getElementById('menuNameInput').value.trim();
+  if (!n) { alert('Adj nevet az étlapnak!'); return; }
+  if (!items.length) { alert('Nincs mit menteni.'); return; }
+  var s = lsGet(); s[n] = items.map(function(i){ return {name:i.name, price:i.price}; });
+  if (!lsSet(s)) { alert('A mentés nem sikerült (a böngésző nem engedi a tárolást).'); return; }
+  document.getElementById('menuNameInput').value = '';
+  refreshSaved(); document.getElementById('savedMenusSelect').value = n; syncDel();
+  setStatus('„' + n + '” elmentve.', 'ok');
+}
+function refreshSaved(){
+  var sel = document.getElementById('savedMenusSelect'), cur = sel.value;
+  sel.innerHTML = ''; sel.appendChild(el('option',{value:'',text:'-- Válassz a mentett étlapok közül --'}));
+  Object.keys(lsGet()).forEach(function(k){ sel.appendChild(el('option',{value:k,text:k})); });
+  sel.value = cur; syncDel();
+}
+function syncDel(){ document.getElementById('delMenuBtn').classList.toggle('hidden', !document.getElementById('savedMenusSelect').value); }
+function loadSavedMenu(){
+  var n = document.getElementById('savedMenusSelect').value; syncDel();
+  if (!n) return;
+  var list = lsGet()[n]; if (!list) return;
+  items = list.map(function(i,k){ return {id: Date.now()+k+Math.random(), name:i.name, price:Number(i.price), qty1:0, qpp:{}}; });
+  document.getElementById('saveMenuBox').classList.remove('hidden');
+  setStatus('Betöltve: ' + n, 'ok');
+  renderList1(); if (currentMode===2) renderList2();
+}
+function deleteSavedMenu(){
+  var n = document.getElementById('savedMenusSelect').value; if (!n) return;
+  if (!confirm('Törlöd ezt a mentett étlapot: ' + n + '?')) return;
+  var s = lsGet(); delete s[n]; lsSet(s);
+  document.getElementById('savedMenusSelect').value = ''; refreshSaved();
+}
+
+/* ---------- MEGOSZTÓ ---------- */
+function initPersons(){
+  var v = document.getElementById('personNames').value;
+  persons = v.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  persons = persons.filter(function(p,i){ return persons.indexOf(p) === i; });
+  if (!persons.length) persons = ['Vendég 1'];
+  if (persons.indexOf(activePerson) < 0) activePerson = persons[0];
+  document.getElementById('splitContainer').classList.remove('hidden');
+  renderPersonTabs(); renderList2();
+}
+function renderPersonTabs(){
+  var c = document.getElementById('personTabsContainer'); c.innerHTML = '';
+  persons.forEach(function(p){
+    var b = el('button',{class:'person-tab'+(p===activePerson?' active':''),text:p});
+    b.onclick = function(){ activePerson = p; renderPersonTabs(); renderList2(); };
+    c.appendChild(b);
+  });
+}
+function renderList2(){
+  var c = document.getElementById('itemList2'); c.innerHTML = '';
+  if (!items.length) { c.appendChild(el('p',{class:'small',style:'text-align:center;padding:20px',text:'Előbb vegyél fel tételeket az 1. fülön.'})); calcTotal2(); return; }
+  items.forEach(function(it){
+    var q = el('span',{text:it.qpp[activePerson]||0});
+    var minus = el('button',{class:'qty-btn',text:'−'}); minus.onclick = function(){ it.qpp[activePerson] = Math.max(0,(it.qpp[activePerson]||0)-1); q.textContent = it.qpp[activePerson]; calcTotal2(); };
+    var plus = el('button',{class:'qty-btn',text:'+'}); plus.onclick = function(){ it.qpp[activePerson] = (it.qpp[activePerson]||0)+1; q.textContent = it.qpp[activePerson]; calcTotal2(); };
+    c.appendChild(el('div',{class:'item-row'},[
+      el('div',{style:'flex:1;min-width:0'},[el('div',{text:it.name}), el('div',{class:'small',text:fmt(it.price)+' / db'})]),
+      el('div',{class:'qty'},[minus,q,plus])
+    ]));
+  });
+  calcTotal2();
+}
+function calcTotal2(){
+  var m = svcMul(), tot = 0, per = {};
+  persons.forEach(function(p){ per[p] = 0; });
+  items.forEach(function(i){ persons.forEach(function(p){ var s = (i.qpp[p]||0)*i.price*m; per[p] += s; tot += s; }); });
+  document.getElementById('totalPrice2').textContent = fmt(tot);
+  var b = document.getElementById('perPersonBreakdown'); b.innerHTML = '';
+  persons.forEach(function(p){ b.appendChild(el('div',{text:p + ': ' + fmt(per[p])})); });
+  if (m>1) b.appendChild(el('div',{class:'small',text:'(a szervizdíjjal együtt, az 1. fülön állítható)'}));
+}
+</script>
 </body>
 </html>
