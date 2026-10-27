@@ -10,8 +10,6 @@
             margin: 0;
             padding: 0;
             -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
         }
@@ -46,7 +44,6 @@
             cursor: pointer;
             background-color: #222;
             color: #888;
-            transition: all 0.2s;
         }
         .tab-btn.active {
             background-color: #ffd700;
@@ -95,22 +92,10 @@
             padding: 10px 0;
             border-bottom: 1px solid #2a2a2a;
         }
-        .item-info {
-            flex: 1;
-        }
-        .item-title {
-            font-size: 1rem;
-            font-weight: 500;
-        }
-        .item-price {
-            color: #ffd700;
-            font-size: 0.9rem;
-        }
-        .item-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .item-info { flex: 1; }
+        .item-title { font-size: 1rem; font-weight: 500; }
+        .item-price { color: #ffd700; font-size: 0.9rem; }
+        .item-controls { display: flex; align-items: center; gap: 8px; }
         .qty-btn {
             background: #333;
             color: #fff;
@@ -156,6 +141,12 @@
             background: #ffd700;
             color: #121212;
         }
+        .loading {
+            text-align: center;
+            color: #ffd700;
+            padding: 15px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -171,8 +162,9 @@
     <div id="mode1Section" class="card">
         <h3 style="margin-bottom: 8px; color: #fff;">Fénykép az étlapról / cetliről</h3>
         <input type="file" id="menuPhoto" accept="image/*" capture="environment">
-        <button class="btn btn-secondary" onclick="loadDemoData()">Minta adatok betöltése (Demo)</button>
+        <button class="btn" onclick="processMenuPhoto()">Étlap feldolgozása AI-val</button>
         
+        <div id="loadingStatus"></div>
         <div id="itemList1" style="margin-top: 16px;"></div>
 
         <div class="total-box">
@@ -186,7 +178,7 @@
         <h3 style="margin-bottom: 8px; color: #fff;">Barátok megosztott számlája</h3>
         <label>Kik vannak jelen? (Vesszővel elválasztva)</label>
         <input type="text" id="personNames" value="Peti, Kati, Balázs" placeholder="pl. Peti, Kati, Balázs">
-        <button class="btn btn-secondary" onclick="initPersons()">Személyek beállítása</button>
+        <button class="btn btn-secondary" onclick="initPersons()">Személyek rögzítése</button>
 
         <div id="splitContainer" class="hidden" style="margin-top: 16px;">
             <div class="person-tabs" id="personTabsContainer"></div>
@@ -201,15 +193,8 @@
     </div>
 
     <script>
-        // Belső logika és demó adatok obfuskált kezelése
         let currentMode = 1;
-        let items = [
-            { id: 1, name: "Gulyásleves", price: 2400, qty1: 0, qtyPerPerson: {} },
-            { id: 2, name: "Rántott hús burgonyával", price: 3800, qty1: 0, qtyPerPerson: {} },
-            { id: 3, name: "Csapolt Sör (0.5l)", price: 1200, qty1: 0, qtyPerPerson: {} },
-            { id: 4, name: "Ásványvíz (0.33l)", price: 600, qty1: 0, qtyPerPerson: {} },
-            { id: 5, name: "Palacsinta (2 db)", price: 1000, qty1: 0, qtyPerPerson: {} }
-        ];
+        let items = []; // Üresen indul, a fotóból töltődik fel!
         let persons = ["Peti", "Kati", "Balázs"];
         let activePerson = "Peti";
 
@@ -230,13 +215,74 @@
             }
         }
 
-        function loadDemoData() {
-            alert("A kamera képet feldolgozta a háttérben! (Demo adatok betöltve)");
-            renderList1();
-            if(currentMode === 2) renderList2();
+        // Valós Gemini API feldolgozás a fotóból
+        async function processMenuPhoto() {
+            const fileInput = document.getElementById('menuPhoto');
+            const statusDiv = document.getElementById('loadingStatus');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("Kérlek előbb készíts vagy tölts be egy fényképet az étlapról/cetliről!");
+                return;
+            }
+
+            statusDiv.innerHTML = '<div class="loading">Étlap elemzése a mesterséges intelligenciával... Kérlek várj.</div>';
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(event) {
+                const base64Image = event.target.result.split(',')[1];
+                
+                try {
+                    // API hívás a Gemini képfeldolgozó modellhez
+                    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSy_VALOS_API_KULCS_HELYE', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: "Olvasd ki erről az étlapról vagy blokkról az ételeket, italokat és a hozzá tartozó árakat. Add vissza JSON tömb formátumban, ahol minden elemnek van egy 'name' (szöveg) és egy 'price' (szám) mezője. Csak a tiszta JSON-t add vissza semmi más szöveget ne írj." },
+                                    { inline_data: { mime_type: file.type, data: base64Image } }
+                                ]
+                            }]
+                        })
+                    });
+
+                    const data = await response.json();
+                    let textResult = data.candidates[0].content.parts[0].text;
+                    
+                    // Tisztítás és feldolgozás
+                    textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
+                    let parsedItems = JSON.parse(textResult);
+
+                    items = parsedItems.map((item, index) => ({
+                        id: index + 1,
+                        name: item.name,
+                        price: Number(item.price),
+                        qty1: 0,
+                        qtyPerPerson: {}
+                    }));
+
+                    statusDiv.innerHTML = '<div style="color: #4caf50; text-align:center; margin: 10px 0;">Sikeresen beolvasva a képről!</div>';
+                    renderList1();
+                    if(currentMode === 2) renderList2();
+
+                } catch (error) {
+                    console.error(error);
+                    statusDiv.innerHTML = '';
+                    alert("Hiba történt a kép elemzése közben. Próbáld újra egy tisztább fotóval!");
+                }
+            };
+
+            reader.readAsDataURL(file);
         }
 
         function renderList1() {
+            let container = document.getElementById('itemList1');
+            if(items.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">Még nincsenek tételek. Kérlek fotózd le az étlapot, és nyomj a feldolgozó gombra!</p>';
+                return;
+            }
             let html = '';
             items.forEach(i => {
                 html += `<div class="item-row">
@@ -251,7 +297,7 @@
                     </div>
                 </div>`;
             });
-            document.getElementById('itemList1').innerHTML = html;
+            container.innerHTML = html;
             calcTotal1();
         }
 
@@ -294,6 +340,11 @@
         }
 
         function renderList2() {
+            let container = document.getElementById('itemList2');
+            if(items.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">Előbb tölts be étlapot az 1. módban!</p>';
+                return;
+            }
             let html = '';
             items.forEach(i => {
                 let q = (i.qtyPerPerson[activePerson] || 0);
@@ -309,7 +360,7 @@
                     </div>
                 </div>`;
             });
-            document.getElementById('itemList2').innerHTML = html;
+            container.innerHTML = html;
             calcTotal2();
         }
 
@@ -344,9 +395,6 @@
             });
             document.getElementById('perPersonBreakdown').innerText = breakdownText;
         }
-
-        // Alapértelmezett indítás
-        renderList1();
     </script>
 </body>
 </html>
