@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Éttermi Ellenőr & Számlamegosztó v1.7.0</title>
+    <title>Éttermi Ellenőr & Számlamegosztó v1.9.0</title>
     <style>
         * {
             box-sizing: border-box;
@@ -87,6 +87,7 @@
             background-color: #2e7d32;
             color: #ffffff;
             border: none;
+            font-size: 1.1rem;
         }
         .file-upload-wrapper {
             position: relative;
@@ -183,28 +184,39 @@
             border: 1px dashed #555;
         }
 
-        /* DYNAMIC IMAGE CROPPER & ZOOM CONTAINER */
-        .cropper-container {
-            position: relative;
-            width: 100%;
-            height: 320px;
+        /* ZOOM & CROP FELÜLET */
+        .zoom-wrapper {
             background-color: #000;
             border-radius: 10px;
-            overflow: hidden;
-            margin-top: 12px;
-            touch-action: none;
             border: 2px solid #ffd700;
+            margin-top: 12px;
+            padding: 8px;
+            text-align: center;
         }
-        .cropper-img {
-            position: absolute;
-            transform-origin: 0 0;
+        canvas#zoomCanvas {
+            width: 100%;
+            max-height: 320px;
+            background-color: #000;
+            border-radius: 6px;
+            touch-action: none;
+            display: block;
             cursor: grab;
         }
-        .zoom-instructions {
-            font-size: 0.8rem;
-            color: #aaa;
-            text-align: center;
-            margin-top: 6px;
+        .zoom-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .zoom-btn {
+            flex: 1;
+            padding: 10px;
+            background-color: #333;
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -212,7 +224,7 @@
 
     <div class="header">
         <h1>Költség & Számla Ellenőr</h1>
-        <div class="version-tag">Verzió: v1.7.0 (Zoom & Crop)</div>
+        <div class="version-tag">Verzió: v1.9.0</div>
     </div>
 
     <div class="nav-tabs">
@@ -234,23 +246,26 @@
         
         <div class="file-upload-wrapper">
             <button class="btn">📸 Étlap fotózása</button>
-            <input type="file" id="menuPhoto" accept="image/*" capture="environment" onchange="loadPhotoToCropper()">
+            <input type="file" id="menuPhoto" accept="image/*" capture="environment" onchange="loadPhotoToCanvas()">
         </div>
 
-        <!-- NAGYÍTÓ ÉS VÁGÓ FELÜLET (FOTÓZÁS UTÁN JELENIK MEG) -->
-        <div id="cropWrapper" class="hidden">
-            <div class="zoom-instructions">👉 Használd az ujjad a kép nagyításához és igazításához!</div>
-            <div class="cropper-container" id="cropperBox">
-                <img id="previewImg" class="cropper-img" src="" alt="Étlap fotó">
+        <!-- NAGYÍTÓ ÉS MOZGATÓ DOBOZ -->
+        <div id="cropWrapper" class="zoom-wrapper hidden">
+            <div style="font-size:0.8rem; color:#aaa; margin-bottom:6px;">👉 Húzd a képet az ujjaddal, vagy nagyíts a gombokkal:</div>
+            <canvas id="zoomCanvas"></canvas>
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="adjustZoom(1.25)">🔍 + Nagyítás</button>
+                <button class="zoom-btn" onclick="adjustZoom(0.8)">🔍 - Kicsinyítés</button>
+                <button class="zoom-btn" onclick="resetZoom()">🔄 Alaphelyzet</button>
             </div>
-            <button class="btn btn-success" onclick="processCroppedPhoto()">✓ PIPA – Beolvasás indítása</button>
+            <button class="btn btn-success" style="margin-top:10px;" onclick="processCanvasImage()">✓ BEOLVASÁS INDÍTÁSA</button>
         </div>
         
         <div id="loadingStatus"></div>
 
         <div id="itemList1" style="margin-top: 16px;"></div>
 
-        <!-- KÉZI HOZZÁADÁS -->
+        <!-- KÉZI HOZZÁADÁS (BIZTOSÍTÉK) -->
         <details style="margin-top: 14px;">
             <summary style="cursor: pointer; color: #888; font-size: 0.85rem;">+ Új tétel hozzáadása kézzel</summary>
             <div class="manual-section">
@@ -298,18 +313,18 @@
         let persons = ["Peti", "Kati", "Balázs"];
         let activePerson = "Peti";
 
-        // KÉPNAGYÍTÁS ÉS HÚZÁS VÁLTOZÓK
-        let imgScale = 1;
-        let imgX = 0;
-        let imgY = 0;
-        let startX = 0, startY = 0;
+        let loadedImg = new Image();
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
         let isDragging = false;
-        let initialDistance = null;
+        let startX = 0;
+        let startY = 0;
 
         window.onload = function() {
             refreshSavedMenusList();
             renderList1();
-            setupTouchZoom();
+            initCanvasEvents();
         };
 
         function switchMode(m) {
@@ -329,94 +344,106 @@
             }
         }
 
-        // FOTÓ BETÖLTÉSE A NAGYÍTÓS / VÁGÓS SZERKESZTŐBE
-        function loadPhotoToCropper() {
+        function loadPhotoToCanvas() {
             const fileInput = document.getElementById('menuPhoto');
             if (!fileInput.files || fileInput.files.length === 0) return;
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                const img = document.getElementById('previewImg');
-                img.src = e.target.result;
-                img.onload = function() {
-                    imgScale = 1;
-                    imgX = 0;
-                    imgY = 0;
-                    updateImgTransform();
+                loadedImg = new Image();
+                loadedImg.onload = function() {
+                    scale = 1;
+                    offsetX = 0;
+                    offsetY = 0;
                     document.getElementById('cropWrapper').classList.remove('hidden');
+                    drawCanvas();
                 };
+                loadedImg.src = e.target.result;
             };
             reader.readAsDataURL(fileInput.files[0]);
         }
 
-        function updateImgTransform() {
-            const img = document.getElementById('previewImg');
-            img.style.transform = `translate(${imgX}px, ${imgY}px) scale(${imgScale})`;
-        }
-
-        // ERINTÉSES NAGYÍTÁS ÉS MOZGATÁS (TOUCH EVENTS)
-        function setupTouchZoom() {
-            const box = document.getElementById('cropperBox');
-            const img = document.getElementById('previewImg');
-
-            box.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    isDragging = true;
-                    startX = e.touches[0].clientX - imgX;
-                    startY = e.touches[0].clientY - imgY;
-                } else if (e.touches.length === 2) {
-                    isDragging = false;
-                    initialDistance = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                }
-            });
-
-            box.addEventListener('touchmove', (e) => {
-                if (isDragging && e.touches.length === 1) {
-                    imgX = e.touches[0].clientX - startX;
-                    imgY = e.touches[0].clientY - startY;
-                    updateImgTransform();
-                } else if (e.touches.length === 2 && initialDistance) {
-                    const dist = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    let factor = dist / initialDistance;
-                    imgScale = Math.min(Math.max(1, imgScale * factor), 4);
-                    initialDistance = dist;
-                    updateImgTransform();
-                }
-            });
-
-            box.addEventListener('touchend', () => {
-                isDragging = false;
-                initialDistance = null;
-            });
-        }
-
-        // RÁNAGYÍTOTT KÉPRÉSZLET KIVÁGÁSA ÉS AI-VAL BEOLVASÁSA
-        async function processCroppedPhoto() {
-            const statusDiv = document.getElementById('loadingStatus');
-            const img = document.getElementById('previewImg');
-            
-            statusDiv.innerHTML = '<div class="loading">🔍 Ránagyított felület beolvasása...</div>';
-
-            const canvas = document.createElement('canvas');
-            const box = document.getElementById('cropperBox');
-            canvas.width = box.clientWidth;
-            canvas.height = box.clientHeight;
+        function drawCanvas() {
+            const canvas = document.getElementById('zoomCanvas');
             const ctx = canvas.getContext('2d');
 
-            ctx.fillStyle = '#000';
+            canvas.width = canvas.clientWidth;
+            canvas.height = 300;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#111";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             ctx.save();
-            ctx.translate(imgX, imgY);
-            ctx.scale(imgScale, imgScale);
-            ctx.drawImage(img, 0, 0);
+            ctx.translate(canvas.width / 2 + offsetX, canvas.height / 2 + offsetY);
+            ctx.scale(scale, scale);
+
+            let drawW = canvas.width;
+            let drawH = (loadedImg.height / loadedImg.width) * drawW;
+            ctx.drawImage(loadedImg, -drawW / 2, -drawH / 2, drawW, drawH);
+
             ctx.restore();
+        }
+
+        function adjustZoom(factor) {
+            scale *= factor;
+            scale = Math.min(Math.max(0.5, scale), 6);
+            drawCanvas();
+        }
+
+        function resetZoom() {
+            scale = 1;
+            offsetX = 0;
+            offsetY = 0;
+            drawCanvas();
+        }
+
+        function initCanvasEvents() {
+            const canvas = document.getElementById('zoomCanvas');
+
+            // Érintéses (mobil) mozgás
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    startX = e.touches[0].clientX - offsetX;
+                    startY = e.touches[0].clientY - offsetY;
+                }
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (isDragging && e.touches.length === 1) {
+                    offsetX = e.touches[0].clientX - startX;
+                    offsetY = e.touches[0].clientY - startY;
+                    drawCanvas();
+                }
+            });
+
+            canvas.addEventListener('touchend', () => { isDragging = false; });
+
+            // Egérrel történő mozgás (ha gépen teszteli)
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX - offsetX;
+                startY = e.clientY - offsetY;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    offsetX = e.clientX - startX;
+                    offsetY = e.clientY - startY;
+                    drawCanvas();
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => { isDragging = false; });
+            canvas.addEventListener('mouseleave', () => { isDragging = false; });
+        }
+
+        async function processCanvasImage() {
+            const statusDiv = document.getElementById('loadingStatus');
+            const canvas = document.getElementById('zoomCanvas');
+
+            statusDiv.innerHTML = '<div class="loading">🔍 Kép elemzése és AI feldolgozás...</div>';
 
             const base64Image = canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
 
@@ -427,7 +454,7 @@
                     body: JSON.stringify({
                         contents: [{
                             parts: [
-                                { text: "SZIGORÚ UTASÍTÁS: Olvasd ki erről a kivágott/ránagyított képről az összes látható ételt, italt és árat! Add vissza tiszta JSON tömbként: [{\"name\":\"Tétel neve\",\"price\":1200}]. Csak a JSON-t!" },
+                                { text: "SZIGORÚ UTASÍTÁS: Olvasd ki erről a kivágott/ránagyított képről az összes látható ételt, italt és árat! Add vissza tiszta JSON tömbként: [{\"name\":\"Tétel neve\",\"price\":1200}]. Semmi más szöveget ne írj!" },
                                 { inline_data: { mime_type: "image/jpeg", data: base64Image } }
                             ]
                         }]
@@ -435,7 +462,7 @@
                 });
 
                 const data = await response.json();
-                
+
                 if (data && data.candidates && data.candidates[0].content.parts[0].text) {
                     let textResult = data.candidates[0].content.parts[0].text;
                     textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -449,18 +476,18 @@
                             qty1: 0,
                             qtyPerPerson: {}
                         }));
-                        statusDiv.innerHTML = '<div style="color: #4caf50; text-align:center; margin: 10px 0;">Sikeres beolvasás a rángyított képről!</div>';
+                        statusDiv.innerHTML = '<div style="color: #4caf50; text-align:center; margin: 10px 0;">Sikeresen beolvasva!</div>';
                         document.getElementById('cropWrapper').classList.add('hidden');
                     } else {
-                        throw new Error("Nem sikerült elolvasni a kiemelt részt.");
+                        throw new Error("Nem találhatók tételek a képen.");
                     }
                 } else {
-                    throw new Error("Szerver válaszhiba.");
+                    throw new Error("Érvénytelen válasz a szervertől.");
                 }
 
             } catch (error) {
                 console.error(error);
-                statusDiv.innerHTML = '<div style="color: #ff6666; text-align:center; margin: 10px 0;">Nem sikerült kiolvasni a ráilletsztett képet. Nagyíts közelebb az árakhoz!</div>';
+                statusDiv.innerHTML = '<div style="color: #ff6666; text-align:center; margin: 10px 0;">Nem sikerült kiolvasni. Nagyíts közelebb a gombokkal, vagy használd alul a kézi rögzítést!</div>';
             }
 
             if (items.length > 0) {
@@ -488,4 +515,187 @@
             });
 
             document.getElementById('manualName').value = '';
-            document.
+            document.getElementById('manualPrice').value = '';
+            document.getElementById('saveMenuBox').classList.remove('hidden');
+            renderList1();
+            if(currentMode === 2) renderList2();
+        }
+
+        function saveCurrentMenu() {
+            const nameInput = document.getElementById('menuNameInput').value.trim();
+            if (!nameInput) {
+                alert("Kérlek adj meg egy nevet az étlapnak!");
+                return;
+            }
+            if (items.length === 0) {
+                alert("Nincs menthető étlap!");
+                return;
+            }
+
+            let savedMenus = JSON.parse(localStorage.getItem('saved_restaurant_menus') || '{}');
+            savedMenus[nameInput] = items.map(i => ({ name: i.name, price: i.price }));
+            localStorage.setItem('saved_restaurant_menus', JSON.stringify(savedMenus));
+
+            alert(`'${nameInput}' sikeresen elmentve!`);
+            document.getElementById('menuNameInput').value = '';
+            refreshSavedMenusList();
+        }
+
+        function refreshSavedMenusList() {
+            const select = document.getElementById('savedMenusSelect');
+            select.innerHTML = '<option value="">-- Válassz a mentett étlapok közül --</option>';
+
+            let savedMenus = JSON.parse(localStorage.getItem('saved_restaurant_menus') || '{}');
+            for (let name in savedMenus) {
+                let opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                select.appendChild(opt);
+            }
+        }
+
+        function loadSavedMenu() {
+            const select = document.getElementById('savedMenusSelect');
+            const selectedName = select.value;
+            if (!selectedName) return;
+
+            let savedMenus = JSON.parse(localStorage.getItem('saved_restaurant_menus') || '{}');
+            let loadedItems = savedMenus[selectedName];
+
+            if (loadedItems) {
+                items = loadedItems.map((item, index) => ({
+                    id: Date.now() + index,
+                    name: item.name,
+                    price: Number(item.price),
+                    qty1: 0,
+                    qtyPerPerson: {}
+                }));
+
+                document.getElementById('saveMenuBox').classList.remove('hidden');
+                document.getElementById('loadingStatus').innerHTML = `<div style="color: #ffd700; text-align:center; margin: 10px 0;">Betöltve: <b>${selectedName}</b></div>`;
+                renderList1();
+                if(currentMode === 2) renderList2();
+            }
+        }
+
+        function renderList1() {
+            let container = document.getElementById('itemList1');
+            if(items.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">Még nincsenek tételek. Fotózd be az étlapot a gombra kattintva!</p>';
+                return;
+            }
+            let html = '';
+            items.forEach(i => {
+                html += `<div class="item-row">
+                    <div class="item-info">
+                        <div class="item-title">${i.name}</div>
+                        <div class="item-price">${i.price} Ft / db</div>
+                    </div>
+                    <div class="item-controls">
+                        <button class="qty-btn" onclick="changeQty1(${i.id}, -1)">-</button>
+                        <span style="font-weight:bold; width:24px; text-align:center;">${i.qty1}</span>
+                        <button class="qty-btn" onclick="changeQty1(${i.id}, 1)">+</button>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+            calcTotal1();
+        }
+
+        function changeQty1(id, delta) {
+            let item = items.find(x => x.id === id);
+            if(item) {
+                item.qty1 = Math.max(0, item.qty1 + delta);
+                renderList1();
+            }
+        }
+
+        function calcTotal1() {
+            let sum = items.reduce((acc, curr) => acc + (curr.qty1 * curr.price), 0);
+            document.getElementById('totalPrice1').innerText = sum.toLocaleString() + " Ft";
+        }
+
+        function initPersons() {
+            let val = document.getElementById('personNames').value;
+            persons = val.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            if(persons.length === 0) persons = ["Vendég 1"];
+            activePerson = persons[0];
+
+            document.getElementById('splitContainer').classList.remove('hidden');
+            renderPersonTabs();
+            renderList2();
+        }
+
+        function renderPersonTabs() {
+            let html = '';
+            persons.forEach(p => {
+                html += `<button class="person-tab ${p === activePerson ? 'active' : ''}" onclick="selectPerson('${p}')">${p}</button>`;
+            });
+            document.getElementById('personTabsContainer').innerHTML = html;
+        }
+
+        function selectPerson(p) {
+            activePerson = p;
+            renderPersonTabs();
+            renderList2();
+        }
+
+        function renderList2() {
+            let container = document.getElementById('itemList2');
+            if(items.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">Előbb fotózz be egy étlapot az 1. módban!</p>';
+                return;
+            }
+            let html = '';
+            items.forEach(i => {
+                let q = (i.qtyPerPerson[activePerson] || 0);
+                html += `<div class="item-row">
+                    <div class="item-info">
+                        <div class="item-title">${i.name} (${activePerson}-nek)</div>
+                        <div class="item-price">${i.price} Ft / db</div>
+                    </div>
+                    <div class="item-controls">
+                        <button class="qty-btn" onclick="changeQty2(${i.id}, -1)">-</button>
+                        <span style="font-weight:bold; width:24px; text-align:center;">${q}</span>
+                        <button class="qty-btn" onclick="changeQty2(${i.id}, 1)">+</button>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+            calcTotal2();
+        }
+
+        function changeQty2(id, delta) {
+            let item = items.find(x => x.id === id);
+            if(item) {
+                if(!item.qtyPerPerson[activePerson]) item.qtyPerPerson[activePerson] = 0;
+                item.qtyPerPerson[activePerson] = Math.max(0, item.qtyPerPerson[activePerson] + delta);
+                renderList2();
+            }
+        }
+
+        function calcTotal2() {
+            let totalSum = 0;
+            let personTotals = {};
+            persons.forEach(p => personTotals[p] = 0);
+
+            items.forEach(i => {
+                persons.forEach(p => {
+                    let q = (i.qtyPerPerson[p] || 0);
+                    let sub = q * i.price;
+                    personTotals[p] += sub;
+                    totalSum += sub;
+                });
+            });
+
+            document.getElementById('totalPrice2').innerText = totalSum.toLocaleString() + " Ft";
+
+            let breakdownText = "";
+            persons.forEach(p => {
+                breakdownText += `${p}: ${personTotals[p].toLocaleString()} Ft | `;
+            });
+            document.getElementById('perPersonBreakdown').innerText = breakdownText;
+        }
+    </script>
+</body>
+</html>
