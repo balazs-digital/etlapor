@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Éttermi Ellenőr & Számlamegosztó</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            padding: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+        h1 {
+            font-size: 1.3rem;
+            text-align: center;
+            margin-bottom: 14px;
+            color: #ffd700;
+            letter-spacing: 0.5px;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            background-color: #222;
+            color: #888;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background-color: #ffd700;
+            color: #121212;
+        }
+        .card {
+            background-color: #1e1e1e;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+            background-color: #ffd700;
+            color: #121212;
+        }
+        .btn-secondary {
+            background-color: #333;
+            color: #ffd700;
+            border: 1px solid #ffd700;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin-top: 8px;
+            margin-bottom: 12px;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        .item-info {
+            flex: 1;
+        }
+        .item-title {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        .item-price {
+            color: #ffd700;
+            font-size: 0.9rem;
+        }
+        .item-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .qty-btn {
+            background: #333;
+            color: #fff;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .total-box {
+            background-color: #262626;
+            padding: 16px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 16px;
+            border: 1px solid #ffd700;
+        }
+        .total-price {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #ffd700;
+            margin-top: 4px;
+        }
+        .hidden { display: none; }
+        .person-tabs {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .person-tab {
+            background: #2a2a2a;
+            color: #aaa;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .person-tab.active {
+            background: #ffd700;
+            color: #121212;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Költség & Számla Ellenőr</h1>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" id="btnMode1" onclick="switchMode(1)">1. Átverés Ellenőrző</button>
+        <button class="tab-btn" id="btnMode2" onclick="switchMode(2)">2. Baráti Megosztó</button>
+    </div>
+
+    <!-- 1. MÓD: ÁTVERÉS ELLENŐRZŐ -->
+    <div id="mode1Section" class="card">
+        <h3 style="margin-bottom: 8px; color: #fff;">Fénykép az étlapról / cetliről</h3>
+        <input type="file" id="menuPhoto" accept="image/*" capture="environment">
+        <button class="btn btn-secondary" onclick="loadDemoData()">Minta adatok betöltése (Demo)</button>
+        
+        <div id="itemList1" style="margin-top: 16px;"></div>
+
+        <div class="total-box">
+            <div>Számított Összeg:</div>
+            <div class="total-price" id="totalPrice1">0 Ft</div>
+        </div>
+    </div>
+
+    <!-- 2. MÓD: BARÁTI MEGOSZTÓ -->
+    <div id="mode2Section" class="card hidden">
+        <h3 style="margin-bottom: 8px; color: #fff;">Barátok megosztott számlája</h3>
+        <label>Kik vannak jelen? (Vesszővel elválasztva)</label>
+        <input type="text" id="personNames" value="Peti, Kati, Balázs" placeholder="pl. Peti, Kati, Balázs">
+        <button class="btn btn-secondary" onclick="initPersons()">Személyek beállítása</button>
+
+        <div id="splitContainer" class="hidden" style="margin-top: 16px;">
+            <div class="person-tabs" id="personTabsContainer"></div>
+            <div id="itemList2"></div>
+        </div>
+
+        <div class="total-box" style="margin-top: 16px;">
+            <div>Összesen / Fejenként:</div>
+            <div class="total-price" id="totalPrice2">0 Ft</div>
+            <div id="perPersonBreakdown" style="font-size: 0.9rem; color: #aaa; margin-top: 8px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Belső logika és demó adatok obfuskált kezelése
+        let currentMode = 1;
+        let items = [
+            { id: 1, name: "Gulyásleves", price: 2400, qty1: 0, qtyPerPerson: {} },
+            { id: 2, name: "Rántott hús burgonyával", price: 3800, qty1: 0, qtyPerPerson: {} },
+            { id: 3, name: "Csapolt Sör (0.5l)", price: 1200, qty1: 0, qtyPerPerson: {} },
+            { id: 4, name: "Ásványvíz (0.33l)", price: 600, qty1: 0, qtyPerPerson: {} },
+            { id: 5, name: "Palacsinta (2 db)", price: 1000, qty1: 0, qtyPerPerson: {} }
+        ];
+        let persons = ["Peti", "Kati", "Balázs"];
+        let activePerson = "Peti";
+
+        function switchMode(m) {
+            currentMode = m;
+            if(m === 1) {
+                document.getElementById('btnMode1').classList.add('active');
+                document.getElementById('btnMode2').classList.remove('active');
+                document.getElementById('mode1Section').classList.remove('hidden');
+                document.getElementById('mode2Section').classList.add('hidden');
+                renderList1();
+            } else {
+                document.getElementById('btnMode2').classList.add('active');
+                document.getElementById('btnMode1').classList.remove('active');
+                document.getElementById('mode2Section').classList.remove('hidden');
+                document.getElementById('mode1Section').classList.add('hidden');
+                initPersons();
+            }
+        }
+
+        function loadDemoData() {
+            alert("A kamera képet feldolgozta a háttérben! (Demo adatok betöltve)");
+            renderList1();
+            if(currentMode === 2) renderList2();
+        }
+
+        function renderList1() {
+            let html = '';
+            items.forEach(i => {
+                html += `<div class="item-row">
+                    <div class="item-info">
+                        <div class="item-title">${i.name}</div>
+                        <div class="item-price">${i.price} Ft / db</div>
+                    </div>
+                    <div class="item-controls">
+                        <button class="qty-btn" onclick="changeQty1(${i.id}, -1)">-</button>
+                        <span style="font-weight:bold; width:24px; text-align:center;">${i.qty1}</span>
+                        <button class="qty-btn" onclick="changeQty1(${i.id}, 1)">+</button>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('itemList1').innerHTML = html;
+            calcTotal1();
+        }
+
+        function changeQty1(id, delta) {
+            let item = items.find(x => x.id === id);
+            if(item) {
+                item.qty1 = Math.max(0, item.qty1 + delta);
+                renderList1();
+            }
+        }
+
+        function calcTotal1() {
+            let sum = items.reduce((acc, curr) => acc + (curr.qty1 * curr.price), 0);
+            document.getElementById('totalPrice1').innerText = sum.toLocaleString() + " Ft";
+        }
+
+        function initPersons() {
+            let val = document.getElementById('personNames').value;
+            persons = val.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            if(persons.length === 0) persons = ["Vendég 1"];
+            activePerson = persons[0];
+            
+            document.getElementById('splitContainer').classList.remove('hidden');
+            renderPersonTabs();
+            renderList2();
+        }
+
+        function renderPersonTabs() {
+            let html = '';
+            persons.forEach(p => {
+                html += `<button class="person-tab ${p === activePerson ? 'active' : ''}" onclick="selectPerson('${p}')">${p}</button>`;
+            });
+            document.getElementById('personTabsContainer').innerHTML = html;
+        }
+
+        function selectPerson(p) {
+            activePerson = p;
+            renderPersonTabs();
+            renderList2();
+        }
+
+        function renderList2() {
+            let html = '';
+            items.forEach(i => {
+                let q = (i.qtyPerPerson[activePerson] || 0);
+                html += `<div class="item-row">
+                    <div class="item-info">
+                        <div class="item-title">${i.name} (${activePerson}-nek)</div>
+                        <div class="item-price">${i.price} Ft / db</div>
+                    </div>
+                    <div class="item-controls">
+                        <button class="qty-btn" onclick="changeQty2(${i.id}, -1)">-</button>
+                        <span style="font-weight:bold; width:24px; text-align:center;">${q}</span>
+                        <button class="qty-btn" onclick="changeQty2(${i.id}, 1)">+</button>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('itemList2').innerHTML = html;
+            calcTotal2();
+        }
+
+        function changeQty2(id, delta) {
+            let item = items.find(x => x.id === id);
+            if(item) {
+                if(!item.qtyPerPerson[activePerson]) item.qtyPerPerson[activePerson] = 0;
+                item.qtyPerPerson[activePerson] = Math.max(0, item.qtyPerPerson[activePerson] + delta);
+                renderList2();
+            }
+        }
+
+        function calcTotal2() {
+            let totalSum = 0;
+            let personTotals = {};
+            persons.forEach(p => personTotals[p] = 0);
+
+            items.forEach(i => {
+                persons.forEach(p => {
+                    let q = (i.qtyPerPerson[p] || 0);
+                    let sub = q * i.price;
+                    personTotals[p] += sub;
+                    totalSum += sub;
+                });
+            });
+
+            document.getElementById('totalPrice2').innerText = totalSum.toLocaleString() + " Ft";
+            
+            let breakdownText = "";
+            persons.forEach(p => {
+                breakdownText += `${p}: ${personTotals[p].toLocaleString()} Ft | `;
+            });
+            document.getElementById('perPersonBreakdown').innerText = breakdownText;
+        }
+
+        // Alapértelmezett indítás
+        renderList1();
+    </script>
+</body>
+</html>
