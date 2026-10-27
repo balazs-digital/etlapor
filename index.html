@@ -53,7 +53,7 @@ canvas#zoomCanvas{width:100%;height:320px;background:#000;border-radius:6px;touc
 <body>
 <div class="header">
   <h1>Költség & Számla Ellenőr</h1>
-  <div class="version-tag">Verzió: v3.1 (2026-10-27)</div>
+  <div class="version-tag">Verzió: v3.2 (2026-10-27)</div>
 </div>
 
 <div class="nav-tabs">
@@ -70,12 +70,11 @@ canvas#zoomCanvas{width:100%;height:320px;background:#000;border-radius:6px;touc
   <summary style="cursor:pointer;color:#ffd700;font-weight:bold">⚙ AI-beolvasás beállítása (nem kötelező) <span id="aiBadge" class="small" style="display:block;font-weight:normal;margin-top:4px"></span></summary>
   <div style="margin-top:12px">
     <p class="small" style="color:#bbb;line-height:1.5">Az app így is beolvassa az étlapot a telefonon. Ha egy ingyenes Google-kulcsot is megadsz, az AI olvassa be, ami sokkal pontosabb. A kulcs csak ezen a telefonon marad, és a saját ingyenes Google-keretedből fogy, nem másokéból.</p>
-    <ol style="margin:10px 0 10px 18px;line-height:1.7;font-size:.9rem;color:#ddd">
-      <li>Nyisd meg: <b>aistudio.google.com</b> és lépj be a Google-fiókoddal.</li>
-      <li>Kattints a <b>Get API key</b> (API-kulcs) gombra, majd <b>Create API key</b>.</li>
-      <li>Másold ki a kulcsot (hosszan nyomva a szövegen), és illeszd be ide:</li>
-    </ol>
-    <input type="text" id="gkey" placeholder="Ide illeszd be a kulcsot" autocomplete="off" autocapitalize="off" spellcheck="false">
+
+    <button class="btn btn-secondary" style="margin-top:0" onclick="openKeyPage()">1. Kulcs kérése (megnyitja a Google-t)</button>
+    <p class="small" style="margin:8px 0">Lépj be, kattints a <b>Create API key</b> gombra, és másold ki a kulcsot. Utána gyere vissza ide:</p>
+    <button class="btn btn-secondary" style="margin-top:0" onclick="pasteKey()">2. Beillesztés a vágólapról</button>
+    <input type="text" id="gkey" placeholder="vagy írd / illeszd be ide kézzel" autocomplete="off" autocapitalize="off" spellcheck="false" style="margin-top:10px">
     <button class="btn btn-secondary" style="margin-top:0" onclick="testKey()">Mentés és ellenőrzés</button>
     <div id="keyStatus" class="status"></div>
     <p class="small" style="margin-top:8px;line-height:1.5">A keret a Google-fiókodban van: az AI Studióban látod, mennyi maradt. Ha elfogy, az app automatikusan offline olvas. Az ingyenes szinten a Google a beküldött képeket fejlesztésre felhasználhatja, ezért csak étlapot fotózz vele.</p>
@@ -123,7 +122,7 @@ canvas#zoomCanvas{width:100%;height:320px;background:#000;border-radius:6px;touc
   <input type="number" id="svc" inputmode="decimal" value="0" min="0" max="30" oninput="recalc()">
 
   <div class="total-box">
-    <div>Számított összeg:</div>
+    <div>Összesen (a megadott darabszámok alapján):</div>
     <div class="total-price" id="totalPrice1">0 Ft</div>
     <div class="small" id="svcInfo1"></div>
   </div>
@@ -203,6 +202,15 @@ async function aiRead(){
   var items = parseAi(parts.map(function(p){ return p.text||''; }).join(''));
   useInc();
   return {items: items};
+}
+function openKeyPage(){ window.open('https://aistudio.google.com/apikey', '_blank'); }
+async function pasteKey(){
+  var st = document.getElementById('keyStatus');
+  try {
+    var t = ((await navigator.clipboard.readText()) || '').trim();
+    if (!t || /\s/.test(t) || t.length < 20) { st.className = 'status err'; st.textContent = 'A vágólapon nincs kulcs. Másold ki a kulcsot a Google oldalán (hosszan nyomva), és próbáld újra.'; return; }
+    document.getElementById('gkey').value = t; testKey();
+  } catch(e) { st.className = 'status err'; st.textContent = 'A beillesztést a telefon nem engedte. Nyomd hosszan az alsó mezőt, és válaszd a Beillesztést.'; }
 }
 async function testKey(){
   var inp = document.getElementById('gkey'), st = document.getElementById('keyStatus');
@@ -423,7 +431,7 @@ function renderRest(rest){
     add.onclick = function(){
       var p = Number(pr.value);
       if (!p) { pr.focus(); return; }
-      items.push({id: Date.now()+Math.random(), name: nm.value.trim()||'Tétel', price: p, qty1: 0, qpp: {}});
+      items.push({id: Date.now()+Math.random(), name: nm.value.trim()||'Tétel', price: p, qty1: 1, qpp: {}});
       row.remove(); document.getElementById('saveMenuBox').classList.remove('hidden');
       renderList1(); if (currentMode===2) renderList2();
     };
@@ -525,7 +533,7 @@ function addManualItem(){
   var n = document.getElementById('manualName').value.trim();
   var p = Number(document.getElementById('manualPrice').value);
   if (!n || !p) { alert('Add meg a nevet és az árat is!'); return; }
-  items.push({id: Date.now()+Math.random(), name: n, price: p, qty1: 0, qpp: {}});
+  items.push({id: Date.now()+Math.random(), name: n, price: p, qty1: 1, qpp: {}});
   document.getElementById('manualName').value = ''; document.getElementById('manualPrice').value = '';
   document.getElementById('saveMenuBox').classList.remove('hidden');
   renderList1(); if (currentMode===2) renderList2();
@@ -536,6 +544,11 @@ function removeItem(id){ items = items.filter(function(x){ return x.id !== id; }
 function renderList1(){
   var c = document.getElementById('itemList1'); c.innerHTML = '';
   if (!items.length) { c.appendChild(el('p',{class:'small',style:'text-align:center;padding:20px',text:'Még nincsenek tételek. Fotózd le az étlapot, vagy adj hozzá kézzel!'})); recalc(); return; }
+  var bar = el('div',{style:'display:flex;gap:8px;margin-bottom:6px'},[
+    el('button',{class:'zoom-btn',text:'Mind 1 db',onclick:function(){ items.forEach(function(i){ i.qty1 = 1; }); renderList1(); }}),
+    el('button',{class:'zoom-btn',text:'Nullázás',onclick:function(){ items.forEach(function(i){ i.qty1 = 0; }); renderList1(); }})]);
+  c.appendChild(bar);
+  c.appendChild(el('p',{class:'small',style:'margin-bottom:4px',text:'Állítsd be a darabszámot (− / +), az összeg ezekből adódik.'}));
   items.forEach(function(it){
     var nm = el('input',{type:'text',class:'nm',value:it.name}); nm.oninput = function(){ it.name = nm.value; };
     var pr = el('input',{type:'number',class:'pr',value:it.price}); pr.setAttribute('inputmode','numeric'); pr.oninput = function(){ it.price = Number(pr.value)||0; recalc(); };
