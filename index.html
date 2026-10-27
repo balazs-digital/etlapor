@@ -53,7 +53,7 @@ canvas#zoomCanvas{width:100%;height:320px;background:#000;border-radius:6px;touc
 <body>
 <div class="header">
   <h1>Költség & Számla Ellenőr</h1>
-  <div class="version-tag">Verzió: v2.8 (2026-10-27)</div>
+  <div class="version-tag">Verzió: v3.1 (2026-10-27)</div>
 </div>
 
 <div class="nav-tabs">
@@ -65,6 +65,22 @@ canvas#zoomCanvas{width:100%;height:320px;background:#000;border-radius:6px;touc
   <h4 style="color:#ffd700">Mentett étlapok</h4>
   <select id="savedMenusSelect" onchange="loadSavedMenu()"><option value="">-- Válassz a mentett étlapok közül --</option></select>
 </div>
+
+<details class="card" id="aiCard">
+  <summary style="cursor:pointer;color:#ffd700;font-weight:bold">⚙ AI-beolvasás beállítása (nem kötelező) <span id="aiBadge" class="small" style="display:block;font-weight:normal;margin-top:4px"></span></summary>
+  <div style="margin-top:12px">
+    <p class="small" style="color:#bbb;line-height:1.5">Az app így is beolvassa az étlapot a telefonon. Ha egy ingyenes Google-kulcsot is megadsz, az AI olvassa be, ami sokkal pontosabb. A kulcs csak ezen a telefonon marad, és a saját ingyenes Google-keretedből fogy, nem másokéból.</p>
+    <ol style="margin:10px 0 10px 18px;line-height:1.7;font-size:.9rem;color:#ddd">
+      <li>Nyisd meg: <b>aistudio.google.com</b> és lépj be a Google-fiókoddal.</li>
+      <li>Kattints a <b>Get API key</b> (API-kulcs) gombra, majd <b>Create API key</b>.</li>
+      <li>Másold ki a kulcsot (hosszan nyomva a szövegen), és illeszd be ide:</li>
+    </ol>
+    <input type="text" id="gkey" placeholder="Ide illeszd be a kulcsot" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="btn btn-secondary" style="margin-top:0" onclick="testKey()">Mentés és ellenőrzés</button>
+    <div id="keyStatus" class="status"></div>
+    <p class="small" style="margin-top:8px;line-height:1.5">A keret a Google-fiókodban van: az AI Studióban látod, mennyi maradt. Ha elfogy, az app automatikusan offline olvas. Az ingyenes szinten a Google a beküldött képeket fejlesztésre felhasználhatja, ezért csak étlapot fotózz vele.</p>
+  </div>
+</details>
 
 <div id="mode1Section" class="card">
   <h3 style="margin-bottom:12px;color:#fff">Étlap / blokk beolvasása</h3>
@@ -134,14 +150,81 @@ canvas#zoomCanvas{width:100%;height:320px;background:#000;border-radius:6px;touc
 var currentMode = 1, items = [], persons = [], activePerson = '';
 var img = null, scale = 1, offX = 0, offY = 0;
 var LS_KEY = 'saved_restaurant_menus';
+var GKEY_LS = 'ett_gkey', USE_LS = 'ett_ai_use';
+function getKey(){ try { return (localStorage.getItem(GKEY_LS) || '').trim(); } catch(e){ return window.__gk || ''; } }
+function setKey(k){ k = (k||'').trim(); try { if (k) localStorage.setItem(GKEY_LS, k); else localStorage.removeItem(GKEY_LS); } catch(e){ window.__gk = k; } }
+function useToday(){ try { var o = JSON.parse(localStorage.getItem(USE_LS) || '{}'); return o.d === new Date().toISOString().slice(0,10) ? o.n : 0; } catch(e){ return 0; } }
+function useInc(){ try { localStorage.setItem(USE_LS, JSON.stringify({d: new Date().toISOString().slice(0,10), n: useToday()+1})); } catch(e){} }
 
+var PROMPT_AI = 'Ez egy étterem étlapjának, napi ajánlatának vagy számlájának fotója. Olvasd ki MINDEN látható tételt (étel, ital) az árával együtt. ' +
+  'Az ár forintban, egész szám legyen (pl. 1790). Ha egy tételnek nem látszik az ára, hagyd ki. A címeket, dátumokat, kategórianeveket ("Levesek") és a szervizdíjat ne vedd fel tételnek. ' +
+  'A tétel nevét úgy add vissza, ahogy olvasható, a mértékegységet (pl. 0,5 l) hagyd benne. Kizárólag JSON tömböt adj vissza ebben a formában: [{"name":"Tétel neve","price":1790}]';
+var _model = null;
+function aiErr(code, msg){ var e = new Error(msg || code); e.code = code; return e; }
+async function gfetch(url, opt){
+  var ctrl = new AbortController(), to = setTimeout(function(){ ctrl.abort(); }, 35000);
+  try { opt = opt || {}; opt.signal = ctrl.signal; opt.headers = Object.assign({'x-goog-api-key': getKey()}, opt.headers || {}); return await fetch(url, opt); }
+  finally { clearTimeout(to); }
+}
+function mapStatus(st){ return (st === 400 || st === 401 || st === 403) ? 'bad_key' : st === 429 ? 'quota' : 'down'; }
+async function pickModel(){
+  if (_model) return _model;
+  try { var c = JSON.parse(localStorage.getItem('ett_model') || 'null'); if (c && Date.now() - c.t < 6*3600*1000) return (_model = c.n); } catch(e){}
+  var r = await gfetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200');
+  if (!r.ok) throw aiErr(mapStatus(r.status));
+  var d = await r.json();
+  var cands = (d.models || []).filter(function(m){ return (m.supportedGenerationMethods||[]).indexOf('generateContent') >= 0; })
+    .map(function(m){ return (m.name||'').replace(/^models\//,''); })
+    .filter(function(n){ return /^gemini-[\d.]+-flash(-\d+)?$/.test(n); })
+    .map(function(n){ return {n:n, v: parseFloat((n.match(/^gemini-([\d.]+)-flash/)||[])[1]) || 0}; })
+    .sort(function(a,b){ return b.v - a.v; });
+  if (!cands.length) throw aiErr('down', 'nincs elérhető modell');
+  _model = cands[0].n; try { localStorage.setItem('ett_model', JSON.stringify({n:_model, t:Date.now()})); } catch(e){}
+  return _model;
+}
+function parseAi(text){
+  var t = String(text||'').replace(/```json|```/g,'').trim(), a = t.indexOf('['), b = t.lastIndexOf(']');
+  if (a >= 0 && b > a) t = t.slice(a, b+1);
+  var arr = JSON.parse(t); if (!Array.isArray(arr)) throw new Error('nem tömb');
+  return arr.map(function(x){ return {name: String((x && x.name) || '').trim().slice(0,120), price: Math.round(Number(String(x && x.price).replace(/[^\d.]/g,'')) || 0)}; })
+    .filter(function(x){ return x.name && x.price >= 50 && x.price <= 500000; }).slice(0,200);
+}
+async function aiRead(){
+  var c = cropVisible(true); if (!c) throw new Error('Nincs kép a látható részen.');
+  var b64 = c.toDataURL('image/jpeg', 0.85).split(',')[1];
+  var model = await pickModel();
+  var r = await gfetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({contents:[{parts:[{text: PROMPT_AI},{inline_data:{mime_type:'image/jpeg', data:b64}}]}], generationConfig:{temperature:0, responseMimeType:'application/json'}})
+  });
+  if (!r.ok) { if (r.status === 404) _model = null; throw aiErr(mapStatus(r.status)); }
+  var d = await r.json();
+  var parts = (((d.candidates||[])[0]||{}).content||{}).parts || [];
+  var items = parseAi(parts.map(function(p){ return p.text||''; }).join(''));
+  useInc();
+  return {items: items};
+}
+async function testKey(){
+  var inp = document.getElementById('gkey'), st = document.getElementById('keyStatus');
+  setKey(inp.value); _model = null; try { localStorage.removeItem('ett_model'); } catch(e){}
+  if (!getKey()) { st.className = 'status'; st.textContent = 'A kulcs törölve, az app csak offline olvas.'; refreshAiBadge(); return; }
+  st.className = 'status'; st.textContent = 'Ellenőrzés…';
+  try { var m = await pickModel(); st.className = 'status ok'; st.textContent = '✓ A kulcs működik. Mostantól az AI olvassa be az étlapot.'; }
+  catch(e){ if (e.code === 'bad_key') setKey(''); st.className = 'status err'; st.textContent = e.code === 'bad_key' ? 'A kulcs nem jó. Másold ki újra az AI Studióból, az egész szöveget.' : e.code === 'quota' ? 'A Google keret most elfogyott, próbáld később.' : 'Nem érem el a Google-t. Van internet?'; }
+  refreshAiBadge();
+}
+function refreshAiBadge(){
+  var b = document.getElementById('aiBadge'); if (!b) return;
+  b.textContent = getKey() ? ('AI-beolvasás: BE · ma ezen a telefonon ' + useToday() + ' db') : 'AI-beolvasás: KI (offline olvasás)';
+  b.style.color = getKey() ? '#4caf50' : '#888';
+}
 function lsGet(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e){ return {}; } }
 function lsSet(o){ try { localStorage.setItem(LS_KEY, JSON.stringify(o)); return true; } catch(e){ return false; } }
 function fmt(n){ return Math.round(n).toLocaleString('hu-HU') + ' Ft'; }
 function el(t, props, kids){ var e = document.createElement(t); for (var k in (props||{})) { if (k==='class') e.className = props[k]; else if (k==='text') e.textContent = props[k]; else e[k] = props[k]; } (kids||[]).forEach(function(c){ e.appendChild(c); }); return e; }
 function setStatus(msg, cls){ var s = document.getElementById('loadingStatus'); s.innerHTML=''; if(msg) s.appendChild(el('div',{class:'status '+(cls||''),text:msg})); }
 
-window.onload = function(){ refreshSaved(); renderList1(); initCanvas(); };
+window.onload = function(){ refreshSaved(); renderList1(); initCanvas(); document.getElementById('gkey').value = getKey(); refreshAiBadge(); };
 
 function switchMode(m){
   currentMode = m;
@@ -212,7 +295,7 @@ function initCanvas(){
 }
 
 /* A látszó részt az EREDETI felbontásból vágjuk ki, így éles marad */
-function cropVisible(){
+function cropVisible(noFilter){
   var cv = document.getElementById('zoomCanvas');
   var w = cv.clientWidth, h = cv.clientHeight;
   var dw = w, k = img.width / dw;               // kép px / canvas css px (scale=1 mellett)
@@ -228,6 +311,7 @@ function cropVisible(){
   var c = out.getContext('2d');
   c.imageSmoothingQuality = 'high';
   c.drawImage(img, sx0, sy0, sw, sh, 0, 0, out.width, out.height);
+  if (noFilter) return out;
   // szürkeárnyalat + kontraszt-nyújtás
   var d = c.getImageData(0,0,out.width,out.height), p = d.data, hist = new Array(256).fill(0), i, g;
   for (i = 0; i < p.length; i += 4) { g = (p[i]*0.299 + p[i+1]*0.587 + p[i+2]*0.114)|0; p[i] = g; hist[g]++; }
@@ -353,6 +437,24 @@ async function scan(){
   var btn = document.getElementById('scanBtn'); btn.disabled = true;
   var st = document.getElementById('loadingStatus'); st.innerHTML = '';
   st.appendChild(el('div',{class:'status'},[el('span',{id:'stxt',text:'Előkészítés…'}), el('div',{class:'bar'},[el('i',{id:'bar'})])]));
+  var aiNote = '';
+  if (getKey() && navigator.onLine !== false) {
+    try {
+      var stx = document.getElementById('stxt'); if (stx) stx.textContent = 'Az AI olvassa az étlapot…';
+      var ai = await aiRead();
+      if (ai && ai.items && ai.items.length) {
+        ai.items.forEach(function(f, i){ items.push({id: Date.now()+i+Math.random(), name: f.name, price: f.price, qty1: 0, qpp: {}}); });
+        setStatus(ai.items.length + ' tétel beolvasva (AI). Ellenőrizd az árakat, a hibásat javítsd vagy töröld (×).', 'ok'); refreshAiBadge();
+        document.getElementById('saveMenuBox').classList.remove('hidden');
+        btn.disabled = false; renderList1(); if (currentMode===2) renderList2();
+        return;
+      }
+      aiNote = 'Az AI nem talált tételt, ';
+    } catch(e) {
+      aiNote = (e && e.code === 'quota') ? 'A Google-fiókod mai ingyenes kerete elfogyott, ' : (e && e.code === 'bad_key') ? 'A mentett kulcs nem jó (Beállítás lent), ' : 'Az AI most nem elérhető, ';
+    }
+    var stx2 = document.getElementById('stxt'); if (stx2) stx2.textContent = aiNote + 'offline beolvasás indul…';
+  }
   try {
     var crop = cropVisible();
     if (!crop) throw new Error('Nincs kép a látható részen.');
@@ -403,7 +505,7 @@ async function scan(){
     var pr = best.parsed, found = pr.items;
     if (found.length) {
       found.forEach(function(f, i){ items.push({id: Date.now()+i+Math.random(), name: f.name, price: f.price, qty1: 0, qpp: {}}); });
-      setStatus(found.length + ' tétel hozzáadva. Ellenőrizd a neveket és az árakat, a hibásat javítsd, vagy töröld (×).', 'ok');
+      setStatus((aiNote ? aiNote + 'ezért offline olvastam be: ' : '') + found.length + ' tétel hozzáadva. Ellenőrizd a neveket és az árakat, a hibásat javítsd, vagy töröld (×).', 'ok');
       document.getElementById('saveMenuBox').classList.remove('hidden');
     } else {
       setStatus('Egy árat sem találtam a képen. Lent látod, mit olvasott a program; ha van benne tétel, vedd fel kézzel, vagy nagyíts közelebb és próbáld újra.', 'err');
