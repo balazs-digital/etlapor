@@ -1,0 +1,25 @@
+{
+  "name": "Étlapőr",
+  "short_name": "Étlapőr",
+  "description": "Fotózd le az étlapot, és pontosan kiszámolja, mennyit kell fizetned. Ne verjenek át!",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F6F3EA",
+  "theme_color": "#0E6B57",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,648 +1,158 @@
-<!DOCTYPE html>
-<html lang="hu">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Éttermi Ellenőr & Számlamegosztó</title>
+<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Étlapőr</title>
+<meta name="theme-color" content="#0E6B57"><link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Étlapőr"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#121212;color:#e0e0e0;padding:16px;max-width:600px;margin:0 auto;min-height:100vh}
-button,.tab-btn{-webkit-user-select:none;user-select:none;font-family:inherit}
-.header{text-align:center;margin-bottom:14px}
-h1{font-size:1.3rem;color:#ffd700}
-.version-tag{font-size:.75rem;color:#888;margin-top:2px}
-.nav-tabs{display:flex;gap:8px;margin-bottom:16px}
-.tab-btn{flex:1;padding:12px;border:none;border-radius:10px;font-size:.95rem;font-weight:bold;cursor:pointer;background:#222;color:#888}
-.tab-btn.active{background:#ffd700;color:#121212}
-.card{background:#1e1e1e;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 4px 10px rgba(0,0,0,.5);border:1px solid #333}
-.btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:1rem;font-weight:bold;cursor:pointer;margin-top:8px;background:#ffd700;color:#121212;display:block;text-align:center}
-.btn[disabled]{opacity:.5}
-.btn-secondary{background:#333;color:#ffd700;border:1px solid #ffd700}
-.btn-success{background:#2e7d32;color:#fff;font-size:1.1rem}
-input[type=text],input[type=number],select{width:100%;padding:12px;margin-top:8px;margin-bottom:12px;background:#2a2a2a;border:1px solid #444;color:#fff;border-radius:8px;font-size:1rem}
-input[type=file]{display:none}
-.item-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 0;border-bottom:1px solid #2a2a2a}
-.item-row .nm{flex:1 1 100%}
-.item-row .sp{flex:1}
-.idx{color:#777;font-size:.8rem;min-width:22px}
-.item-row input{margin:0;padding:8px;font-size:.95rem}
-.item-row .pr{width:110px;text-align:right}
-.item-row .del{background:none;border:none;color:#a55;font-size:1.2rem;width:28px;height:32px}
-.qty{display:flex;align-items:center;gap:6px}
-.qty-btn{background:#333;color:#fff;border:none;width:34px;height:34px;border-radius:6px;font-weight:bold;font-size:1.1rem}
-.qty span{font-weight:bold;min-width:20px;text-align:center}
-.total-box{background:#262626;padding:16px;border-radius:10px;text-align:center;margin-top:16px;border:1px solid #ffd700}
-.total-price{font-size:1.6rem;font-weight:bold;color:#ffd700;margin-top:4px}
-.hidden{display:none!important}
-.person-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px}
-.person-tab{background:#2a2a2a;color:#aaa;border:none;padding:8px 14px;border-radius:8px;font-weight:bold;white-space:nowrap}
-.person-tab.active{background:#ffd700;color:#121212}
-.status{text-align:center;padding:10px;font-weight:bold;color:#ffd700}
-.status.err{color:#ff7777}.status.ok{color:#4caf50}
-.bar{height:8px;background:#333;border-radius:4px;margin-top:6px;overflow:hidden}
-.bar i{display:block;height:100%;width:0;background:#ffd700}
-.box{background:#252525;padding:12px;border-radius:8px;margin-top:14px;border:1px dashed #555}
-.zoom-wrapper{background:#000;border-radius:10px;border:2px solid #ffd700;margin-top:12px;padding:8px;text-align:center}
-canvas#zoomCanvas{width:100%;height:320px;background:#000;border-radius:6px;touch-action:none;display:block}
-.zoom-controls{display:flex;gap:8px;margin-top:8px}
-.zoom-btn{flex:1;padding:10px;background:#333;color:#ffd700;border:1px solid #ffd700;border-radius:8px;font-weight:bold;font-size:.9rem}
-.hint{font-size:.8rem;color:#aaa;margin-bottom:6px}
-.small{font-size:.85rem;color:#888}
-</style>
-</head>
-<body>
-<div class="header">
-  <h1>Költség & Számla Ellenőr</h1>
-  <div class="version-tag">Verzió: v3.3 (2026-10-27)</div>
-</div>
-
-<div class="nav-tabs">
-  <button class="tab-btn active" id="btnMode1" onclick="switchMode(1)">1. Ellenőrző</button>
-  <button class="tab-btn" id="btnMode2" onclick="switchMode(2)">2. Baráti megosztó</button>
-</div>
-
-<div class="card">
-  <h4 style="color:#ffd700">Mentett étlapok</h4>
-  <select id="savedMenusSelect" onchange="loadSavedMenu()"><option value="">-- Válassz a mentett étlapok közül --</option></select>
-</div>
-
-<details class="card" id="aiCard">
-  <summary style="cursor:pointer;color:#ffd700;font-weight:bold">⚙ AI-beolvasás beállítása (nem kötelező) <span id="aiBadge" class="small" style="display:block;font-weight:normal;margin-top:4px"></span></summary>
-  <div style="margin-top:12px">
-    <p class="small" style="color:#bbb;line-height:1.5">Az app így is beolvassa az étlapot a telefonon. Ha egy ingyenes Google-kulcsot is megadsz, az AI olvassa be, ami sokkal pontosabb. A kulcs csak ezen a telefonon marad, és a saját ingyenes Google-keretedből fogy, nem másokéból.</p>
-
-    <button class="btn btn-secondary" style="margin-top:0" onclick="openKeyPage()">1. Kulcs kérése (megnyitja a Google-t)</button>
-    <p class="small" style="margin:8px 0">Lépj be, kattints a <b>Create API key</b> gombra, és másold ki a kulcsot. Utána gyere vissza ide:</p>
-    <button class="btn btn-secondary" style="margin-top:0" onclick="pasteKey()">2. Beillesztés a vágólapról</button>
-    <input type="text" id="gkey" placeholder="vagy írd / illeszd be ide kézzel" autocomplete="off" autocapitalize="off" spellcheck="false" style="margin-top:10px">
-    <button class="btn btn-secondary" style="margin-top:0" onclick="testKey()">Mentés és ellenőrzés</button>
-    <div id="keyStatus" class="status"></div>
-    <p class="small" style="margin-top:8px;line-height:1.5">A keret a Google-fiókodban van: az AI Studióban látod, mennyi maradt. Ha elfogy, az app automatikusan offline olvas. Az ingyenes szinten a Google a beküldött képeket fejlesztésre felhasználhatja, ezért csak étlapot fotózz vele.</p>
-  </div>
-</details>
-
-<div id="mode1Section" class="card">
-  <h3 style="margin-bottom:12px;color:#fff">Étlap / blokk beolvasása</h3>
-  <button class="btn" onclick="document.getElementById('menuPhoto').click()">📸 Étlap fotózása</button>
-  <button class="btn btn-secondary" onclick="document.getElementById('menuGallery').click()">🖼 Kép választása a galériából</button>
-  <input type="file" id="menuPhoto" accept="image/*" capture="environment" onchange="loadPhoto(this)">
-  <input type="file" id="menuGallery" accept="image/*" onchange="loadPhoto(this)">
-
-  <div id="cropWrapper" class="zoom-wrapper hidden">
-    <div class="hint">Húzd a képet, két ujjal nagyíthatsz. Csak az látszó rész lesz beolvasva.</div>
-    <canvas id="zoomCanvas"></canvas>
-    <div class="zoom-controls">
-      <button class="zoom-btn" onclick="adjustZoom(1.25)">+ Nagyít</button>
-      <button class="zoom-btn" onclick="adjustZoom(0.8)">− Kicsinyít</button>
-      <button class="zoom-btn" onclick="resetZoom()">Alaphelyzet</button>
-    </div>
-    <button class="btn btn-success" id="scanBtn" onclick="scan()">✓ BEOLVASÁS INDÍTÁSA</button>
-  </div>
-  <div id="loadingStatus"></div>
-
-  <div id="itemList1" style="margin-top:16px"></div>
-
-  <details style="margin-top:14px">
-    <summary style="cursor:pointer;color:#aaa;font-size:.9rem">+ Új tétel hozzáadása kézzel</summary>
-    <div class="box">
-      <input type="text" id="manualName" placeholder="Étel/ital neve" style="margin-bottom:6px">
-      <input type="number" id="manualPrice" inputmode="numeric" placeholder="Ár (Ft)" style="margin-bottom:6px">
-      <button class="btn btn-secondary" style="margin-top:0" onclick="addManualItem()">Hozzáadás</button>
-    </div>
-  </details>
-
-  <div id="saveMenuBox" class="box hidden">
-    <h4 style="color:#fff;margin-bottom:6px">Étlap elmentése későbbre</h4>
-    <input type="text" id="menuNameInput" placeholder="Étterem neve (pl. Kocsis Csárda)">
-    <button class="btn btn-secondary" style="margin-top:0" onclick="saveCurrentMenu()">Étlap mentése</button>
-    <button class="btn btn-secondary hidden" id="delMenuBtn" onclick="deleteSavedMenu()">Kiválasztott mentett étlap törlése</button>
-  </div>
-
-  <label class="small" style="display:block;margin-top:14px">Szervizdíj (%)</label>
-  <input type="number" id="svc" inputmode="decimal" value="0" min="0" max="30" oninput="recalc()">
-
-  <div class="total-box">
-    <div>Összesen (a megadott darabszámok alapján):</div>
-    <div class="total-price" id="totalPrice1">0 Ft</div>
-    <div class="small" id="svcInfo1"></div>
-  </div>
-</div>
-
-<div id="mode2Section" class="card hidden">
-  <h3 style="margin-bottom:8px;color:#fff">Barátok megosztott számlája</h3>
-  <label class="small">Kik vannak jelen? (vesszővel elválasztva)</label>
-  <input type="text" id="personNames" value="Peti, Kati, Balázs">
-  <button class="btn btn-secondary" style="margin-top:0" onclick="initPersons()">Személyek rögzítése</button>
-  <div id="splitContainer" class="hidden" style="margin-top:16px">
-    <div class="person-tabs" id="personTabsContainer"></div>
-    <div id="itemList2"></div>
-  </div>
-  <div class="total-box">
-    <div>Összesen:</div>
-    <div class="total-price" id="totalPrice2">0 Ft</div>
-    <div id="perPersonBreakdown" style="font-size:.95rem;color:#ccc;margin-top:8px;line-height:1.6"></div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+:root{--g:#0E6B57;--gd:#0A4A3D;--y:#F4B942;--bg:#F6F3EA;--ink:#17302A;--ln:#E3DDCB;--mut:#6B7A74;color-scheme:light}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:600 16px Nunito,system-ui,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.app{max-width:480px;margin:0 auto;padding:0 18px 120px}h2{margin:8px 0 6px;font-size:24px}h3{margin:18px 0 8px}
+.top{display:flex;align-items:center;gap:10px;padding:16px 0 8px}.top h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.5px;flex:1;color:var(--gd)}
+.bdg{border:0;border-radius:99px;padding:7px 12px;background:#fff;color:var(--gd);font:800 12px Nunito;box-shadow:0 2px 8px #0001}
+.mut{color:var(--mut);line-height:1.5}small{color:var(--mut)}.sm{font-size:14px}
+.btn{display:block;width:100%;margin:10px 0;padding:15px;border:0;border-radius:14px;background:var(--g);color:#fff;font:800 17px Nunito;box-shadow:0 6px 14px #0E6B5740}
+.btn.ghost{background:none;color:var(--g);border:2px solid var(--g);box-shadow:none}.btn:disabled{background:#cfd6d2;box-shadow:none}
+.mode{display:flex;gap:14px;align-items:center;width:100%;text-align:left;margin:12px 0;padding:18px;border:0;border-radius:20px;background:#fff;box-shadow:0 8px 22px #17302a14;font:600 14px Nunito;color:var(--mut)}
+.mode i{font-style:normal;font-size:34px}.mode b{display:block;font-size:19px;color:var(--ink)}
+.card{background:#fff;border-radius:18px;padding:14px 16px;margin:12px 0;box-shadow:0 4px 14px #17302a0d}.card.warn{outline:2px solid var(--y)}.card.ok{color:var(--g)}
+input,textarea{width:100%;padding:13px 14px;border:2px solid var(--ln);border-radius:13px;font:600 16px Nunito;background:#fff;color:var(--ink);margin:6px 0}input:focus,textarea:focus{outline:0;border-color:var(--g)}
+.mini{width:92px;display:inline-block;padding:8px 10px;margin:0}.fr{display:flex;gap:8px}.fr input:first-child{flex:2}.fr input{min-width:0}.fr .btn{width:54px;margin:6px 0;padding:0}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:#fff;border-radius:16px;padding:11px 12px;margin:8px 0;border:2px solid transparent}.row.on{border-color:var(--g);background:#EAF4F0}
+.ck{width:30px;height:30px;border-radius:50%;border:2px solid var(--ln);background:#fff;color:#fff;font:800 16px Nunito;padding:0}.on .ck{background:var(--g);border-color:var(--g)}
+.nm{flex:1;line-height:1.25}.pr{font-weight:800;color:var(--gd);text-decoration:underline dotted}
+.st{display:flex;align-items:center;gap:12px;margin-left:40px;flex-basis:100%}.st button{width:38px;height:38px;border-radius:50%;border:0;background:var(--g);color:#fff;font:800 22px Nunito;padding:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;align-items:center}.chip{border:2px solid var(--ln);background:#fff;border-radius:99px;padding:8px 14px;font:700 15px Nunito;color:var(--ink)}.chip.on{background:var(--g);border-color:var(--g);color:#fff}
+.chip.all{border-style:dashed}.chip x{margin-left:8px;opacity:.6}
+.ah{display:flex;justify-content:space-between;gap:8px}.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;padding:12px 18px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -6px 18px #0001;display:flex;gap:14px;align-items:center;justify-content:center}
+.bar>div{flex:1}.bar b{display:block;font-size:20px}.bar .btn{width:auto;flex:1;margin:0}
+.shut{text-align:center;margin:18px 0}.shut button{width:112px;height:112px;border-radius:50%;border:0;font-size:44px;background:radial-gradient(circle at 35% 30%,#2A9B80,var(--g) 60%,var(--gd));box-shadow:0 10px 24px #0E6B5755}
+.th{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.th div{position:relative;width:74px;height:74px;border-radius:12px;overflow:hidden}.th img{width:100%;height:100%;object-fit:cover}.th button{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:0;background:#000a;color:#fff;padding:0}
+.err{background:#FBE3D8;color:#8a2f12;padding:12px 14px;border-radius:12px;margin:10px 0;font-size:14px;line-height:1.45}.bk{border:0;background:none;font-size:26px;color:var(--g);padding:6px 0}
+.tot{display:flex;justify-content:space-between;align-items:center;background:var(--gd);color:#fff;border-radius:18px;padding:16px 18px;margin:14px 0;font-size:16px}.tot b{font-size:28px;color:var(--y)}
+.ln{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:15px}.ln.t{font-weight:800;border-top:1px solid var(--ln);margin-top:4px;padding-top:8px}
+.pn{display:flex;justify-content:space-between;align-items:baseline}.pn b{font-size:20px}.pn span{font:800 22px Nunito;color:var(--g)}
+.ins{display:flex;justify-content:space-between;align-items:center;gap:10px}.ins button{border:0;background:var(--g);color:#fff;border-radius:10px;padding:9px 14px;font:800 14px Nunito}
+.spin{width:54px;height:54px;border:5px solid var(--ln);border-top-color:var(--g);border-radius:50%;animation:r 1s linear infinite;margin:70px auto 14px}@keyframes r{to{transform:rotate(360deg)}}
+a{color:var(--g);font-weight:800}
+.ftd{display:flex;align-items:center;justify-content:center;gap:7px;margin:26px 0 10px;opacity:.55}.ftd img{width:18px;height:18px;border-radius:5px}.ftd span{font:700 11px Nunito;color:var(--mut);letter-spacing:.2px}.lnk{text-align:center;font-size:14px;margin-top:20px}
+</style></head><body><div class="app" id="app"></div>
+<script src="config.js"></script>
 <script>
-var currentMode = 1, items = [], persons = [], activePerson = '';
-var img = null, scale = 1, offX = 0, offY = 0;
-var LS_KEY = 'saved_restaurant_menus';
-var GKEY_LS = 'ett_gkey', USE_LS = 'ett_ai_use';
-function getKey(){ try { return (localStorage.getItem(GKEY_LS) || '').trim(); } catch(e){ return window.__gk || ''; } }
-function setKey(k){ k = (k||'').trim(); try { if (k) localStorage.setItem(GKEY_LS, k); else localStorage.removeItem(GKEY_LS); } catch(e){ window.__gk = k; } }
-function useToday(){ try { var o = JSON.parse(localStorage.getItem(USE_LS) || '{}'); return o.d === new Date().toISOString().slice(0,10) ? o.n : 0; } catch(e){ return 0; } }
-function useInc(){ try { localStorage.setItem(USE_LS, JSON.stringify({d: new Date().toISOString().slice(0,10), n: useToday()+1})); } catch(e){} }
-
-var PROMPT_AI = 'Ez egy étterem étlapjának, napi ajánlatának vagy számlájának fotója. Olvasd ki MINDEN látható tételt (étel, ital) az árával együtt. ' +
-  'Az ár forintban, egész szám legyen (pl. 1790). Ha egy tételnek nem látszik az ára, hagyd ki. A címeket, dátumokat, kategórianeveket ("Levesek") és a szervizdíjat ne vedd fel tételnek. ' +
-  'A tétel nevét úgy add vissza, ahogy olvasható, a mértékegységet (pl. 0,5 l) hagyd benne. Kizárólag JSON tömböt adj vissza ebben a formában: [{"name":"Tétel neve","price":1790}]';
-var _model = null;
-function aiErr(code, msg){ var e = new Error(msg || code); e.code = code; return e; }
-async function gfetch(url, opt){
-  var ctrl = new AbortController(), to = setTimeout(function(){ ctrl.abort(); }, 35000);
-  try { opt = opt || {}; opt.signal = ctrl.signal; opt.headers = Object.assign({'x-goog-api-key': getKey()}, opt.headers || {}); return await fetch(url, opt); }
-  finally { clearTimeout(to); }
-}
-function mapStatus(st){ return (st === 400 || st === 401 || st === 403) ? 'bad_key' : st === 429 ? 'quota' : 'down'; }
-async function pickModel(){
-  if (_model) return _model;
-  try { var c = JSON.parse(localStorage.getItem('ett_model') || 'null'); if (c && Date.now() - c.t < 6*3600*1000) return (_model = c.n); } catch(e){}
-  var r = await gfetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200');
-  if (!r.ok) throw aiErr(mapStatus(r.status));
-  var d = await r.json();
-  var cands = (d.models || []).filter(function(m){ return (m.supportedGenerationMethods||[]).indexOf('generateContent') >= 0; })
-    .map(function(m){ return (m.name||'').replace(/^models\//,''); })
-    .filter(function(n){ return /^gemini-[\d.]+-flash(-\d+)?$/.test(n); })
-    .map(function(n){ return {n:n, v: parseFloat((n.match(/^gemini-([\d.]+)-flash/)||[])[1]) || 0}; })
-    .sort(function(a,b){ return b.v - a.v; });
-  if (!cands.length) throw aiErr('down', 'nincs elérhető modell');
-  _model = cands[0].n; try { localStorage.setItem('ett_model', JSON.stringify({n:_model, t:Date.now()})); } catch(e){}
-  return _model;
-}
-function parseAi(text){
-  var t = String(text||'').replace(/```json|```/g,'').trim(), a = t.indexOf('['), b = t.lastIndexOf(']');
-  if (a >= 0 && b > a) t = t.slice(a, b+1);
-  var arr = JSON.parse(t); if (!Array.isArray(arr)) throw new Error('nem tömb');
-  return arr.map(function(x){ return {name: String((x && x.name) || '').trim().slice(0,120), price: Math.round(Number(String(x && x.price).replace(/[^\d.]/g,'')) || 0)}; })
-    .filter(function(x){ return x.name && x.price >= 50 && x.price <= 500000; }).slice(0,200);
-}
-async function aiRead(){
-  var c = cropVisible(true); if (!c) throw new Error('Nincs kép a látható részen.');
-  var b64 = c.toDataURL('image/jpeg', 0.85).split(',')[1];
-  var model = await pickModel();
-  var r = await gfetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({contents:[{parts:[{text: PROMPT_AI},{inline_data:{mime_type:'image/jpeg', data:b64}}]}], generationConfig:{temperature:0, responseMimeType:'application/json'}})
-  });
-  if (!r.ok) { if (r.status === 404) _model = null; throw aiErr(mapStatus(r.status)); }
-  var d = await r.json();
-  var parts = (((d.candidates||[])[0]||{}).content||{}).parts || [];
-  var items = parseAi(parts.map(function(p){ return p.text||''; }).join(''));
-  useInc();
-  return {items: items};
-}
-function openKeyPage(){ window.open('https://aistudio.google.com/apikey?hl=hu', '_blank'); }
-async function pasteKey(){
-  var st = document.getElementById('keyStatus');
-  try {
-    var t = ((await navigator.clipboard.readText()) || '').trim();
-    if (!t || /\s/.test(t) || t.length < 20) { st.className = 'status err'; st.textContent = 'A vágólapon nincs kulcs. Másold ki a kulcsot a Google oldalán (hosszan nyomva), és próbáld újra.'; return; }
-    document.getElementById('gkey').value = t; testKey();
-  } catch(e) { st.className = 'status err'; st.textContent = 'A beillesztést a telefon nem engedte. Nyomd hosszan az alsó mezőt, és válaszd a Beillesztést.'; }
-}
-async function testKey(){
-  var inp = document.getElementById('gkey'), st = document.getElementById('keyStatus');
-  setKey(inp.value); _model = null; try { localStorage.removeItem('ett_model'); } catch(e){}
-  if (!getKey()) { st.className = 'status'; st.textContent = 'A kulcs törölve, az app csak offline olvas.'; refreshAiBadge(); return; }
-  st.className = 'status'; st.textContent = 'Ellenőrzés…';
-  try { var m = await pickModel(); st.className = 'status ok'; st.textContent = '✓ A kulcs működik. Mostantól az AI olvassa be az étlapot.'; }
-  catch(e){ if (e.code === 'bad_key') setKey(''); st.className = 'status err'; st.textContent = e.code === 'bad_key' ? 'A kulcs nem jó. Másold ki újra az AI Studióból, az egész szöveget.' : e.code === 'quota' ? 'A Google keret most elfogyott, próbáld később.' : 'Nem érem el a Google-t. Van internet?'; }
-  refreshAiBadge();
-}
-function refreshAiBadge(){
-  var b = document.getElementById('aiBadge'); if (!b) return;
-  b.textContent = getKey() ? ('AI-beolvasás: BE · ma ezen a telefonon ' + useToday() + ' db') : 'AI-beolvasás: KI (offline olvasás)';
-  b.style.color = getKey() ? '#4caf50' : '#888';
-}
-function lsGet(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e){ return {}; } }
-function lsSet(o){ try { localStorage.setItem(LS_KEY, JSON.stringify(o)); return true; } catch(e){ return false; } }
-function fmt(n){ return Math.round(n).toLocaleString('hu-HU') + ' Ft'; }
-function el(t, props, kids){ var e = document.createElement(t); for (var k in (props||{})) { if (k==='class') e.className = props[k]; else if (k==='text') e.textContent = props[k]; else e[k] = props[k]; } (kids||[]).forEach(function(c){ e.appendChild(c); }); return e; }
-function setStatus(msg, cls){ var s = document.getElementById('loadingStatus'); s.innerHTML=''; if(msg) s.appendChild(el('div',{class:'status '+(cls||''),text:msg})); }
-
-window.onload = function(){ refreshSaved(); renderList1(); initCanvas(); document.getElementById('gkey').value = getKey(); refreshAiBadge(); };
-
-function switchMode(m){
-  currentMode = m;
-  document.getElementById('btnMode1').classList.toggle('active', m===1);
-  document.getElementById('btnMode2').classList.toggle('active', m===2);
-  document.getElementById('mode1Section').classList.toggle('hidden', m!==1);
-  document.getElementById('mode2Section').classList.toggle('hidden', m!==2);
-  if (m===1) renderList1(); else initPersons();
-}
-
-/* ---------- KÉP ---------- */
-function loadPhoto(input){
-  if (!input.files || !input.files[0]) return;
-  var url = URL.createObjectURL(input.files[0]);
-  var im = new Image();
-  im.onload = function(){
-    img = im; scale = 1; offX = 0; offY = 0;
-    document.getElementById('cropWrapper').classList.remove('hidden');
-    setStatus('');
-    drawCanvas();
-  };
-  im.onerror = function(){ setStatus('A képet nem sikerült megnyitni.', 'err'); };
-  im.src = url;
-  input.value = '';
-}
-function fitW(cv){ return cv.width; }
-function drawCanvas(){
-  var cv = document.getElementById('zoomCanvas');
-  var dpr = window.devicePixelRatio || 1;
-  var w = cv.clientWidth, h = cv.clientHeight;
-  if (cv.width !== Math.round(w*dpr)) { cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
-  var ctx = cv.getContext('2d');
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.fillStyle = '#111'; ctx.fillRect(0,0,cv.width,cv.height);
-  if (!img) return;
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  var dw = w, dh = img.height / img.width * dw;
-  ctx.translate(w/2 + offX, h/2 + offY);
-  ctx.scale(scale, scale);
-  ctx.drawImage(img, -dw/2, -dh/2, dw, dh);
-}
-function adjustZoom(f){ scale = Math.min(Math.max(0.3, scale*f), 8); drawCanvas(); }
-function resetZoom(){ scale = 1; offX = 0; offY = 0; drawCanvas(); }
-
-function initCanvas(){
-  var cv = document.getElementById('zoomCanvas');
-  var mode = null, sx, sy, d0, s0;
-  function dist(t){ return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
-  cv.addEventListener('touchstart', function(e){
-    e.preventDefault();
-    if (e.touches.length === 2) { mode = 'pinch'; d0 = dist(e.touches); s0 = scale; }
-    else { mode = 'drag'; sx = e.touches[0].clientX - offX; sy = e.touches[0].clientY - offY; }
-  }, {passive:false});
-  cv.addEventListener('touchmove', function(e){
-    e.preventDefault();
-    if (mode === 'pinch' && e.touches.length === 2) { scale = Math.min(Math.max(0.3, s0 * dist(e.touches)/d0), 8); drawCanvas(); }
-    else if (mode === 'drag' && e.touches.length === 1) { offX = e.touches[0].clientX - sx; offY = e.touches[0].clientY - sy; drawCanvas(); }
-  }, {passive:false});
-  cv.addEventListener('touchend', function(e){
-    if (e.touches.length === 1) { mode = 'drag'; sx = e.touches[0].clientX - offX; sy = e.touches[0].clientY - offY; } else mode = null;
-  });
-  var md = false;
-  cv.addEventListener('mousedown', function(e){ md = true; sx = e.clientX - offX; sy = e.clientY - offY; });
-  window.addEventListener('mousemove', function(e){ if (md) { offX = e.clientX - sx; offY = e.clientY - sy; drawCanvas(); } });
-  window.addEventListener('mouseup', function(){ md = false; });
-  cv.addEventListener('wheel', function(e){ e.preventDefault(); adjustZoom(e.deltaY < 0 ? 1.15 : 0.87); }, {passive:false});
-  window.addEventListener('resize', function(){ if (img) drawCanvas(); });
-}
-
-/* A látszó részt az EREDETI felbontásból vágjuk ki, így éles marad */
-function cropVisible(noFilter){
-  var cv = document.getElementById('zoomCanvas');
-  var w = cv.clientWidth, h = cv.clientHeight;
-  var dw = w, k = img.width / dw;               // kép px / canvas css px (scale=1 mellett)
-  function toImgX(cx){ return ((cx - w/2 - offX)/scale + dw/2) * k; }
-  function toImgY(cy){ var dh = img.height/img.width*dw; return ((cy - h/2 - offY)/scale + dh/2) * k; }
-  var x0 = toImgX(0), x1 = toImgX(w), y0 = toImgY(0), y1 = toImgY(h);
-  var sx0 = Math.max(0,x0), sy0 = Math.max(0,y0), sx1 = Math.min(img.width,x1), sy1 = Math.min(img.height,y1);
-  var sw = sx1 - sx0, sh = sy1 - sy0;
-  if (sw < 10 || sh < 10) return null;
-  var f = 1800 / sw; if (f > 3) f = 3; if (f < 0.5) f = 0.5;   // cél: ~1800px széles
-  var out = document.createElement('canvas');
-  out.width = Math.round(sw*f); out.height = Math.round(sh*f);
-  var c = out.getContext('2d');
-  c.imageSmoothingQuality = 'high';
-  c.drawImage(img, sx0, sy0, sw, sh, 0, 0, out.width, out.height);
-  if (noFilter) return out;
-  // szürkeárnyalat + kontraszt-nyújtás
-  var d = c.getImageData(0,0,out.width,out.height), p = d.data, hist = new Array(256).fill(0), i, g;
-  for (i = 0; i < p.length; i += 4) { g = (p[i]*0.299 + p[i+1]*0.587 + p[i+2]*0.114)|0; p[i] = g; hist[g]++; }
-  var tot = p.length/4, lo = 0, hi = 255, acc = 0;
-  for (i = 0; i < 256; i++) { acc += hist[i]; if (acc > tot*0.01) { lo = i; break; } }
-  acc = 0;
-  for (i = 255; i >= 0; i--) { acc += hist[i]; if (acc > tot*0.01) { hi = i; break; } }
-  if (hi - lo < 30) { lo = 0; hi = 255; }
-  for (i = 0; i < p.length; i += 4) { g = (p[i]-lo)*255/(hi-lo); g = g<0?0:g>255?255:g; p[i]=p[i+1]=p[i+2]=g; p[i+3]=255; }
-  c.putImageData(d,0,0);
-  return out;
-}
-
-
-/* egyenetlen fény kiegyenlítése: helyi átlaghoz viszonyított küszöbölés (integrálkép) */
-function adaptive(src){
-  var w = src.width, h = src.height, c = src.getContext('2d');
-  var d = c.getImageData(0,0,w,h), p = d.data, n = w*h, g = new Uint8Array(n), i, x, y;
-  for (i = 0; i < n; i++) g[i] = p[i*4];
-  var I = new Float64Array((w+1)*(h+1));
-  for (y = 0; y < h; y++){ var row = 0; for (x = 0; x < w; x++){ row += g[y*w+x]; I[(y+1)*(w+1)+x+1] = I[y*(w+1)+x+1] + row; } }
-  var r = Math.max(15, Math.round(w/24)), out = document.createElement('canvas'); out.width = w; out.height = h;
-  var oc = out.getContext('2d'), od = oc.createImageData(w,h), q = od.data;
-  for (y = 0; y < h; y++){
-    var y0 = Math.max(0,y-r), y1 = Math.min(h,y+r+1);
-    for (x = 0; x < w; x++){
-      var x0 = Math.max(0,x-r), x1 = Math.min(w,x+r+1);
-      var sum = I[y1*(w+1)+x1] - I[y0*(w+1)+x1] - I[y1*(w+1)+x0] + I[y0*(w+1)+x0];
-      var mean = sum / ((x1-x0)*(y1-y0));
-      var v = g[y*w+x] < mean*0.88 ? 0 : 255, o = (y*w+x)*4;
-      q[o]=q[o+1]=q[o+2]=v; q[o+3]=255;
-    }
-  }
-  oc.putImageData(od,0,0);
-  return out;
-}
-
-/* ---------- OCR ---------- */
-var worker = null;
-async function getWorker(){
-  if (worker) return worker;
-  if (typeof Tesseract === 'undefined') throw new Error('A felismerő modul nem töltődött be. Kell hozzá internet az első használatkor.');
-  worker = await Tesseract.createWorker('hun', 1, {
-    workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
-    corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/',
-    langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/hun@1.0.0/4.0.0_best_int',
-    logger: function(m){
-      var b = document.getElementById('bar');
-      if (m.status === 'recognizing text' && b) b.style.width = Math.round(m.progress*100) + '%';
-      var t = document.getElementById('stxt');
-      if (t) t.textContent = m.status === 'recognizing text' ? 'Szöveg felismerése (' + (window.__pass||'') + ' menet)… ' + Math.round(m.progress*100) + '%' : 'Előkészítés (első alkalommal pár másodperc)…';
-    }
-  });
-  return worker;
-}
-
-
-function bg(t){ t = t.toLowerCase().replace(/[^a-záéíóöőúüű0-9]/g,''); var o = {}, n = 0; for (var i = 0; i < t.length-1; i++) { o[t.substr(i,2)] = 1; } return o; }
-function sim(a,b){ var A = bg(a), B = bg(b), inter = 0, na = 0, nb = 0, k; for (k in A) { na++; if (B[k]) inter++; } for (k in B) nb++; return (na+nb) ? 2*inter/(na+nb) : 0; }
-
-function parseMenu(text){
-  var res = [], rest = [];
-  var SKIP = /összesen|fizetend|végösszeg|szervíz|szerviz|áfa|készpénz|visszajár|kártya/i;
-  text.split(/\r?\n/).forEach(function(line){
-    line = line.replace(/[|_~=§©®]+/g,' ').replace(/\s+/g,' ').trim();
-    if (line.replace(/[^A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű0-9]/g,'').length < 3) return;
-    if (SKIP.test(line)) return;
-    // az utolsó 3-6 jegyű szám a sorban = ár (ezres elválasztóval is), bárhol, bármi áll utána
-    // az OCR néha szóközt tesz az árba: "41 90 Ft" -> 4190 (csak a sor végén)
-    line = line.replace(/(?<![\d,.])(\d{2}) (\d{2})(?=\s*(?:F[tT])?[.,;\s]*$)/, function(all,a,b){ return (parseInt(a+b,10) % 5 === 0) ? a+b : all; });
-    // "179oFt", "2l90 Ft" -> az Ft előtti számban az O/o=0, l/I/|=1, S=5, B=8
-    line = line.replace(/(?<![A-Za-zÁ-űá-ű])([0-9OoIl|SB][0-9OoIl|SB .]{1,8}?)\s*(F[tT]\b|Ft(?=\W|$))/g, function(all, num, ft){
-      if ((num.match(/[0-9]/g)||[]).length < 2) return all;
-      return num.replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/S/g,'5').replace(/B/g,'8') + ' ' + ft;
-    });
-    if (/\b(jan|feb|márc|ápr|máj|jún|júl|aug|szept|okt|nov|dec)[a-zé]*\.?\s*\d|\d{4}\.?\s*(jan|feb|márc|ápr|máj|jún|júl|aug|szept|okt|nov|dec)/i.test(line)) { rest.push(line); return; }
-    var re = /(\d{1,3}(?:[ .]\d{3})+|\d{3,6})(?!\d)/g, m, last = null;
-    while ((m = re.exec(line)) !== null) {
-      var v = parseInt(m[1].replace(/[ .]/g,''), 10);
-      if (v >= 100 && v <= 200000) last = {idx: m.index, len: m[1].length, v: v, raw: m[1]};
-    }
-    var before = last ? line.slice(0, last.idx) : line;
-    var after  = last ? line.slice(last.idx + last.len) : '';
-    var name = (before + ' ' + after.replace(/^\s*(F[tTlLI1]|HUF|forint)\b[.,]?(\/\S+)?/i,'')).replace(/\s+/g,' ').trim().replace(/\s+F[tT]$/,'');
-    var rawP = last ? last.raw : '';
-    // "0,5 l 590" -> az OCR gyakran "0,5 1 590"-et olvas: az "l" az ár elé olvad
-    if (last && /\d[,.]\d\s*$/.test(before) && /^1[ .]\d{3}$/.test(rawP)) { name = before.trim() + ' l ' + after; rawP = rawP.slice(2); last.v = parseInt(rawP,10); }
-    name = name.replace(/(\d[,.]\d)\s*[1Il|][!.,]?(\s|$)/, '$1 l ');
-    name = name.replace(/\s+/g,' ').replace(/\s+F[tT][.,]?$/,'');
-    name = name.replace(/^[\s.·…:;\-–—*•+]+/,'').replace(/[\s.·…:;\-–—,*•+!?]+$/,'').trim();
-    if (!/[A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]{2}/.test(name)) return;
-    if (last && last.v % 5 !== 0 && last.v >= 10000 && Math.floor(last.v/10) % 5 === 0) { last.v = Math.floor(last.v/10); } // 17907 -> 1790 (a végére tévedt 1 jegy)
-    if (last && last.v % 5 !== 0) { rest.push(name + ' ' + last.raw); return; }
-    if (last) res.push({name: name, price: last.v});
-    else rest.push(name);
-  });
-  return {items: res, rest: rest};
-}
-
-function renderRest(rest){
-  var st = document.getElementById('loadingStatus');
-  if (!rest.length) return;
-  var box = el('details',{class:'box',open:true},[el('summary',{text:rest.length + ' sor ár nélkül (cím vagy kimaradt tétel?) — koppints, ha tétel'})]);
-  rest.forEach(function(name){
-    var nm = el('input',{type:'text',class:'nm',value:name});
-    var pr = el('input',{type:'number',class:'pr',placeholder:'ár'}); pr.setAttribute('inputmode','numeric');
-    var add = el('button',{class:'qty-btn',text:'+'});
-    var row = el('div',{class:'item-row'},[nm,pr,el('span',{class:'small',text:'Ft'}),el('span',{class:'sp'}),add]);
-    add.onclick = function(){
-      var p = Number(pr.value);
-      if (!p) { pr.focus(); return; }
-      items.push({id: Date.now()+Math.random(), name: nm.value.trim()||'Tétel', price: p, qty1: 1, qpp: {}});
-      row.remove(); document.getElementById('saveMenuBox').classList.remove('hidden');
-      renderList1(); if (currentMode===2) renderList2();
-    };
-    box.appendChild(row);
-  });
-  st.appendChild(box);
-}
-
-async function scan(){
-  if (!img) return;
-  var btn = document.getElementById('scanBtn'); btn.disabled = true;
-  var st = document.getElementById('loadingStatus'); st.innerHTML = '';
-  st.appendChild(el('div',{class:'status'},[el('span',{id:'stxt',text:'Előkészítés…'}), el('div',{class:'bar'},[el('i',{id:'bar'})])]));
-  var aiNote = '';
-  if (getKey() && navigator.onLine !== false) {
-    try {
-      var stx = document.getElementById('stxt'); if (stx) stx.textContent = 'Az AI olvassa az étlapot…';
-      var ai = await aiRead();
-      if (ai && ai.items && ai.items.length) {
-        ai.items.forEach(function(f, i){ items.push({id: Date.now()+i+Math.random(), name: f.name, price: f.price, qty1: 0, qpp: {}}); });
-        setStatus(ai.items.length + ' tétel beolvasva (AI). Ellenőrizd az árakat, a hibásat javítsd vagy töröld (×).', 'ok'); refreshAiBadge();
-        document.getElementById('saveMenuBox').classList.remove('hidden');
-        btn.disabled = false; renderList1(); if (currentMode===2) renderList2();
-        return;
-      }
-      aiNote = 'Az AI nem talált tételt, ';
-    } catch(e) {
-      aiNote = (e && e.code === 'quota') ? 'A Google-fiókod mai ingyenes kerete elfogyott, ' : (e && e.code === 'bad_key') ? 'A mentett kulcs nem jó (Beállítás lent), ' : 'Az AI most nem elérhető, ';
-    }
-    var stx2 = document.getElementById('stxt'); if (stx2) stx2.textContent = aiNote + 'offline beolvasás indul…';
-  }
-  try {
-    var crop = cropVisible();
-    if (!crop) throw new Error('Nincs kép a látható részen.');
-    var w = await getWorker();
-    // 1) teljes kép, 2) fény-kiegyenlített, 3) sávokra bontva (az apró alsó sorokhoz)
-    var cA = adaptive(crop), results = [], bandsTxt = '';
-    async function pass(label, image, psm){
-      window.__pass = label;
-      await w.setParameters({tessedit_pageseg_mode: psm, preserve_interword_spaces: '1'});
-      var rr = await w.recognize(image);
-      return rr.data.text || '';
-    }
-    results.push({txt: await pass('1/3', crop, '6')});
-    results.push({txt: await pass('2/3', cA, '4')});
-    var bh = Math.max(260, Math.round(crop.width * 0.22)), ov = Math.round(bh*0.25), k = 0;
-    var bandItems = [], bandRest = [], prevItems = [], bandTxt = '';
-    for (var y0 = 0; y0 < crop.height; y0 += (bh - ov)) {
-      var hh = Math.min(bh, crop.height - y0); if (hh < 60) break;
-      var band = document.createElement('canvas'); band.width = crop.width; band.height = hh;
-      band.getContext('2d').drawImage(crop, 0, y0, crop.width, hh, 0, 0, crop.width, hh);
-      var bt = await pass('3/3 sáv ' + (++k), band, '6'); bandTxt += bt + '\n';
-      var bp = parseMenu(bt);
-      bp.items.forEach(function(it){
-        var dup = prevItems.some(function(p){ return p.price === it.price || sim(p.name, it.name) >= 0.5; }) && prevItems.some(function(p){ return sim(p.name, it.name) >= 0.3; });
-        if (!dup) bandItems.push(it);
-      });
-      bandRest = bandRest.concat(bp.rest);
-      prevItems = bp.items;
-      if (y0 + hh >= crop.height) break;
-    }
-    results.push({txt: bandTxt, parsed: {items: bandItems, rest: bandRest}});
-    results.forEach(function(x){ if (!x.parsed) x.parsed = parseMenu(x.txt); });
-    // a legtöbb tételt adó menet az alap; a többiből csak azok jönnek még be, amik tényleg újak
-    results.sort(function(p,q){ return q.parsed.items.length - p.parsed.items.length; });
-    var base = results[0].parsed, merged = base.items.slice();
-    results.slice(1).forEach(function(x){
-      var seen = {};
-      x.parsed.items.forEach(function(it){
-        seen[it.price] = (seen[it.price]||0) + 1;
-        var similar = merged.some(function(m){ return sim(m.name, it.name) >= 0.45; });
-        var have = merged.filter(function(m){ return m.price === it.price; }).length;
-        if (!similar && have < seen[it.price]) merged.push(it);
-      });
-    });
-    var best = {parsed: {items: merged, rest: base.rest}, res: {data: {text: results.map(function(x,i){ return '--- menet ' + (i+1) + ' ---\n' + x.txt; }).join('\n')}}};
-    var r = best.res;
-    var raw = (r.data.text || '').trim();
-    var pr = best.parsed, found = pr.items;
-    if (found.length) {
-      found.forEach(function(f, i){ items.push({id: Date.now()+i+Math.random(), name: f.name, price: f.price, qty1: 0, qpp: {}}); });
-      setStatus((aiNote ? aiNote + 'ezért offline olvastam be: ' : '') + found.length + ' tétel hozzáadva. Ellenőrizd a neveket és az árakat, a hibásat javítsd, vagy töröld (×).', 'ok');
-      document.getElementById('saveMenuBox').classList.remove('hidden');
-    } else {
-      setStatus('Egy árat sem találtam a képen. Lent látod, mit olvasott a program; ha van benne tétel, vedd fel kézzel, vagy nagyíts közelebb és próbáld újra.', 'err');
-    }
-    renderRest(pr.rest.filter(function(t){ return !found.some(function(f){ return sim(f.name, t) >= 0.45; }); }));
-    document.getElementById('loadingStatus').appendChild(el('details',{class:'box'},[el('summary',{text:'Nyers felismert szöveg'}), el('pre',{style:'white-space:pre-wrap;font-size:.8rem;color:#ccc;margin-top:8px;-webkit-user-select:text;user-select:text',text: raw || '(üres: semmilyen szöveget nem ismert fel)'})]));
-  } catch(err) {
-    console.error(err);
-    setStatus('Hiba: ' + (err && err.message ? err.message : err), 'err');
-  }
-  btn.disabled = false;
-  renderList1(); if (currentMode===2) renderList2();
-}
-
-/* ---------- TÉTELEK ---------- */
-function addManualItem(){
-  var n = document.getElementById('manualName').value.trim();
-  var p = Number(document.getElementById('manualPrice').value);
-  if (!n || !p) { alert('Add meg a nevet és az árat is!'); return; }
-  items.push({id: Date.now()+Math.random(), name: n, price: p, qty1: 1, qpp: {}});
-  document.getElementById('manualName').value = ''; document.getElementById('manualPrice').value = '';
-  document.getElementById('saveMenuBox').classList.remove('hidden');
-  renderList1(); if (currentMode===2) renderList2();
-}
-function byId(id){ return items.find(function(x){ return x.id === id; }); }
-function removeItem(id){ items = items.filter(function(x){ return x.id !== id; }); renderList1(); if (currentMode===2) renderList2(); }
-
-function renderList1(){
-  var c = document.getElementById('itemList1'); c.innerHTML = '';
-  if (!items.length) { c.appendChild(el('p',{class:'small',style:'text-align:center;padding:20px',text:'Még nincsenek tételek. Fotózd le az étlapot, vagy adj hozzá kézzel!'})); recalc(); return; }
-  var bar = el('div',{style:'display:flex;gap:8px;margin-bottom:6px'},[
-    el('button',{class:'zoom-btn',text:'Mind 1 db',onclick:function(){ items.forEach(function(i){ i.qty1 = 1; }); renderList1(); }}),
-    el('button',{class:'zoom-btn',text:'Nullázás',onclick:function(){ items.forEach(function(i){ i.qty1 = 0; }); renderList1(); }})]);
-  c.appendChild(bar);
-  c.appendChild(el('p',{class:'small',style:'margin-bottom:4px',text:'Állítsd be a darabszámot (− / +), az összeg ezekből adódik.'}));
-  items.forEach(function(it){
-    var nm = el('input',{type:'text',class:'nm',value:it.name}); nm.oninput = function(){ it.name = nm.value; };
-    var pr = el('input',{type:'number',class:'pr',value:it.price}); pr.setAttribute('inputmode','numeric'); pr.oninput = function(){ it.price = Number(pr.value)||0; recalc(); };
-    var q = el('span',{text:it.qty1});
-    var minus = el('button',{class:'qty-btn',text:'−'}); minus.onclick = function(){ it.qty1 = Math.max(0, it.qty1-1); q.textContent = it.qty1; recalc(); };
-    var plus = el('button',{class:'qty-btn',text:'+'}); plus.onclick = function(){ it.qty1++; q.textContent = it.qty1; recalc(); };
-    var del = el('button',{class:'del',text:'×'}); del.onclick = function(){ removeItem(it.id); };
-    c.appendChild(el('div',{class:'item-row'},[nm, el('span',{class:'idx',text:(items.indexOf(it)+1)+'.'}), pr, el('span',{class:'small',text:'Ft'}), el('span',{class:'sp'}), el('div',{class:'qty'},[minus,q,plus]), del]));
-  });
-  recalc();
-}
-function svcMul(){ var v = Number(document.getElementById('svc').value)||0; return 1 + Math.max(0,v)/100; }
-function recalc(){
-  var sum = items.reduce(function(a,i){ return a + i.qty1*i.price; }, 0), m = svcMul();
-  document.getElementById('totalPrice1').textContent = fmt(sum*m);
-  document.getElementById('svcInfo1').textContent = m>1 ? 'Ebből szervizdíj: ' + fmt(sum*(m-1)) : '';
-  if (currentMode===2) calcTotal2();
-}
-
-/* ---------- MENTÉS ---------- */
-function saveCurrentMenu(){
-  var n = document.getElementById('menuNameInput').value.trim();
-  if (!n) { alert('Adj nevet az étlapnak!'); return; }
-  if (!items.length) { alert('Nincs mit menteni.'); return; }
-  var s = lsGet(); s[n] = items.map(function(i){ return {name:i.name, price:i.price}; });
-  if (!lsSet(s)) { alert('A mentés nem sikerült (a böngésző nem engedi a tárolást).'); return; }
-  document.getElementById('menuNameInput').value = '';
-  refreshSaved(); document.getElementById('savedMenusSelect').value = n; syncDel();
-  setStatus('„' + n + '” elmentve.', 'ok');
-}
-function refreshSaved(){
-  var sel = document.getElementById('savedMenusSelect'), cur = sel.value;
-  sel.innerHTML = ''; sel.appendChild(el('option',{value:'',text:'-- Válassz a mentett étlapok közül --'}));
-  Object.keys(lsGet()).forEach(function(k){ sel.appendChild(el('option',{value:k,text:k})); });
-  sel.value = cur; syncDel();
-}
-function syncDel(){ document.getElementById('delMenuBtn').classList.toggle('hidden', !document.getElementById('savedMenusSelect').value); }
-function loadSavedMenu(){
-  var n = document.getElementById('savedMenusSelect').value; syncDel();
-  if (!n) return;
-  var list = lsGet()[n]; if (!list) return;
-  items = list.map(function(i,k){ return {id: Date.now()+k+Math.random(), name:i.name, price:Number(i.price), qty1:0, qpp:{}}; });
-  document.getElementById('saveMenuBox').classList.remove('hidden');
-  setStatus('Betöltve: ' + n, 'ok');
-  renderList1(); if (currentMode===2) renderList2();
-}
-function deleteSavedMenu(){
-  var n = document.getElementById('savedMenusSelect').value; if (!n) return;
-  if (!confirm('Törlöd ezt a mentett étlapot: ' + n + '?')) return;
-  var s = lsGet(); delete s[n]; lsSet(s);
-  document.getElementById('savedMenusSelect').value = ''; refreshSaved();
-}
-
-/* ---------- MEGOSZTÓ ---------- */
-function initPersons(){
-  var v = document.getElementById('personNames').value;
-  persons = v.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-  persons = persons.filter(function(p,i){ return persons.indexOf(p) === i; });
-  if (!persons.length) persons = ['Vendég 1'];
-  if (persons.indexOf(activePerson) < 0) activePerson = persons[0];
-  document.getElementById('splitContainer').classList.remove('hidden');
-  renderPersonTabs(); renderList2();
-}
-function renderPersonTabs(){
-  var c = document.getElementById('personTabsContainer'); c.innerHTML = '';
-  persons.forEach(function(p){
-    var b = el('button',{class:'person-tab'+(p===activePerson?' active':''),text:p});
-    b.onclick = function(){ activePerson = p; renderPersonTabs(); renderList2(); };
-    c.appendChild(b);
-  });
-}
-function renderList2(){
-  var c = document.getElementById('itemList2'); c.innerHTML = '';
-  if (!items.length) { c.appendChild(el('p',{class:'small',style:'text-align:center;padding:20px',text:'Előbb vegyél fel tételeket az 1. fülön.'})); calcTotal2(); return; }
-  items.forEach(function(it){
-    var q = el('span',{text:it.qpp[activePerson]||0});
-    var minus = el('button',{class:'qty-btn',text:'−'}); minus.onclick = function(){ it.qpp[activePerson] = Math.max(0,(it.qpp[activePerson]||0)-1); q.textContent = it.qpp[activePerson]; calcTotal2(); };
-    var plus = el('button',{class:'qty-btn',text:'+'}); plus.onclick = function(){ it.qpp[activePerson] = (it.qpp[activePerson]||0)+1; q.textContent = it.qpp[activePerson]; calcTotal2(); };
-    c.appendChild(el('div',{class:'item-row'},[
-      el('div',{style:'flex:1;min-width:0'},[el('div',{text:it.name}), el('div',{class:'small',text:fmt(it.price)+' / db'})]),
-      el('div',{class:'qty'},[minus,q,plus])
-    ]));
-  });
-  calcTotal2();
-}
-function calcTotal2(){
-  var m = svcMul(), tot = 0, per = {};
-  persons.forEach(function(p){ per[p] = 0; });
-  items.forEach(function(i){ persons.forEach(function(p){ var s = (i.qpp[p]||0)*i.price*m; per[p] += s; tot += s; }); });
-  document.getElementById('totalPrice2').textContent = fmt(tot);
-  var b = document.getElementById('perPersonBreakdown'); b.innerHTML = '';
-  persons.forEach(function(p){ b.appendChild(el('div',{text:p + ': ' + fmt(per[p])})); });
-  if (m>1) b.appendChild(el('div',{class:'small',text:'(a szervizdíjjal együtt, az 1. fülön állítható)'}));
-}
-</script>
-</body>
-</html>
+const C=Object.assign({PRICE:'1 990 Ft',MAIL:'',BUY:''},window.CFG||{}),HOSTS=["balazs-digital.github.io","localhost","127.0.0.1"],APP_URL='https://balazs-digital.github.io/etlapor/',PUB={kty:'EC',crv:'P-256',x:'6g8ujRuCZiu2VrBTeX2qVTM88hzhyJR_qr4U4jRVs38',y:'XrKU--SWX4F7TwNCLZ4Nd7p7iZMLYMAHReuxArmkk14'},HOK=()=>HOSTS.includes(location.hostname);
+const $=q=>document.querySelector(q),g=k=>{try{return localStorage.getItem('cech_'+k)||''}catch(e){return''}},s=(k,v)=>{try{localStorage.setItem('cech_'+k,v)}catch(e){}};
+const E=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),num=v=>parseFloat(String(v).replace(/\s/g,'').replace(',','.'));
+/* ---- licenc + próbaidő ---- */
+const DAY=864e5,TR=4*DAY;let ready=0,expired=0,licensed=0,tamper=0,lf=0;
+const db=new Promise(r=>{try{const q=indexedDB.open('cech',1);q.onupgradeneeded=()=>q.result.createObjectStore('k');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)}catch(e){r(null)}});
+const ig=async k=>{const d=await db;return d?new Promise(r=>{try{const q=d.transaction('k').objectStore('k').get(k);q.onsuccess=()=>r(q.result==null?null:q.result);q.onerror=()=>r(null)}catch(e){r(null)}}):null};
+const is=async(k,v)=>{const d=await db;if(d)try{d.transaction('k','readwrite').objectStore('k').put(v,k)}catch(e){}};
+const b64=x=>{x=x.replace(/\s/g,'').replace(/-/g,'+').replace(/_/g,'/');while(x.length%4)x+='=';return Uint8Array.from(atob(x),c=>c.charCodeAt(0))};
+async function ver(e,c){try{if(!HOK()||!crypto.subtle)return false;const sig=b64(c);if(sig.length!=64)return false;const k=await crypto.subtle.importKey('jwk',PUB,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);return await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},k,sig,new TextEncoder().encode('etlapor-v1|'+e.trim().toLowerCase()))}catch(x){return false}}
+async function lic(){const r=g('lic')||await ig('lic');if(!r)return 0;try{const o=JSON.parse(r);if(await ver(o.e,o.c)){if(!g('lic'))s('lic',r);return 1}}catch(x){}return 0}
+async function chk(){const n=Date.now(),t=[+g('t0'),+await ig('t0')].filter(x=>x>0),l=[+g('ls'),+await ig('ls')].filter(x=>x>0),t0=t.length?Math.min(...t):n,ls=l.length?Math.max(...l):0;
+ tamper=(ls>0&&n<ls-36e5)||t0>n+36e5;const m=Math.max(ls,n);s('t0',t0);is('t0',t0);s('ls',m);is('ls',m);lf=Math.max(0,TR-(n-t0));expired=tamper||lf<=0;licensed=await lic()}
+async function act(e,c){e=e.trim();c=c.replace(/\s/g,'');if(!e||!c)return'Add meg az e-mail címet és a kódot is.';if(!await ver(e,c))return'Ez a kód nem érvényes ehhez az e-mail címhez. Pontosan azt az címet írd be, amelyikre a kódot kaptad.';const r=JSON.stringify({e:e.toLowerCase(),c});s('lic',r);await is('lic',r);await chk();return''}
+const left=()=>{const m=Math.ceil(lf/6e4),d=Math.floor(m/1440),h=Math.floor(m%1440/60);return d?d+' nap '+h+' óra':h?h+' óra '+m%60+' perc':m+' perc'};
+/* ---- Gemini (a vásárló saját ingyenes kulcsával) ---- */
+const API='https://generativelanguage.googleapis.com/v1beta';
+const er=st=>({msg:st===-1?'A választ nem sikerült értelmezni. Próbáld újra, vagy fotózz közelebbről.':st===-2?'A kulcs érvényes, de nem találtam hozzá használható AI-modellt.':!st?'Nem sikerült elérni a Google-t. Ellenőrizd a netet.':[400,401,403].includes(st)?'A Google elutasította az API-kulcsot. Hozz létre újat az AI Studióban.':st==429?'Elfogyott a mai ingyenes keret. Próbáld később vagy holnap.':st>=500?'A Google szervere most túlterhelt. Várj egy percet.':'Hiba ('+st+'). Próbáld újra.'});
+async function models(k){const r=await fetch(API+'/models?pageSize=1000&key='+encodeURIComponent(k)),d=await r.json().catch(()=>({}));if(!r.ok)throw{st:r.status};
+ const sc=n=>(/lite/.test(n)?1e3:0)+(/latest/.test(n)?-500:0)+parseFloat((n.match(/gemini-(\d+(?:\.\d+)?)/)||[0,0])[1])*10;
+ return(d.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>m.name.replace(/^models\//,'')).filter(n=>/^gemini-/.test(n)&&/flash/.test(n)&&!/(preview|exp|tts|image|live|audio|thinking|robotics|computer|embedding|customtools|-\d{3}$)/.test(n)).sort((a,b)=>sc(b)-sc(a))}
+const tc=m=>/gemini-2\.5-flash$/.test(m)?{thinkingBudget:0}:/gemini-3|latest/.test(m)?{thinkingLevel:'low'}:null;
+async function ai(parts){const key=g('key');let ms=[];try{ms=JSON.parse(g('models')||'[]')}catch(e){}if(!ms.length){try{ms=await models(key)}catch(e){throw er(e.st)}s('models',JSON.stringify(ms))}
+ let st=0;for(const m of ms.slice(0,3))for(const th of[1,0]){const cfg={responseMimeType:'application/json'};if(th){if(!tc(m))continue;cfg.thinkingConfig=tc(m)}
+  let r,d={};try{r=await fetch(`${API}/models/${m}:generateContent?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts}],generationConfig:cfg}),signal:AbortSignal.timeout(70000)});d=await r.json().catch(()=>({}))}catch(e){st=0;break}
+  if(r.ok){try{return JSON.parse(d.candidates[0].content.parts[0].text.replace(/^```json\s*|```$/g,'').trim())}catch(e){st=-1;break}}
+  st=r.status;if(st==401||st==403)throw er(st);if(st==400&&th)continue;break}
+ if(st==404)s('models','');throw er(st)}
+const PROMPT='Étlap fotó(ka)t látsz. Olvasd ki az ÖSSZES tételt az árával. Szabályok: ne találj ki semmit; az ár szám legyen (ezres elválasztó nélkül, tizedespont); a name a tétel neve a mérettel/mennyiséggel együtt (pl. "Sör 0,5l"); ha egy tétel több méretben/áron szerepel, legyen külön tétel; ugyanazt ne ismételd (a fotók között sem); ár nélküli tételt hagyd ki; currency: az étlap pénzneme (pl. Ft, EUR); service: ha az étlap kiírja a felszámított szervizdíj százalékát, annak a száma, különben 0. Válaszolj KIZÁRÓLAG JSON-ban: {"currency":"Ft","service":0,"items":[{"name":"","price":0}]}';
+/* ---- állapot ---- */
+let S=Object.assign({scr:'home',mode:'',people:[],items:[],extras:[],pct:+g('pct')||0,cur:'Ft',svc:0,q:'',busy:'',err:''},(()=>{try{return JSON.parse(g('st'))}catch(e){return{}}})()),P=[];S.busy='';
+const dec=()=>/^(ft|huf)$/i.test(S.cur)?0:2,pm=x=>Math.round(x*10**dec()),fmt=m=>(m/10**dec()).toLocaleString('hu-HU',{minimumFractionDigits:dec(),maximumFractionDigits:dec()})+' '+S.cur;
+const sv=()=>s('st',JSON.stringify(S));
+function alloc(T,w){const W=w.reduce((a,b)=>a+b,0);if(!W)return w.map(()=>0);const q=w.map(x=>T*x/W),f=q.map(Math.floor);let r=T-f.reduce((a,b)=>a+b,0);q.map((x,i)=>[x-f[i],i]).sort((a,b)=>b[0]-a[0]).slice(0,r).forEach(a=>f[a[1]]++);return f}
+const raw=()=>S.items.reduce((a,i)=>a+(i.q>0?pm(i.price)*i.q:0),0);
+function calc(){const its=S.items.filter(i=>i.q>0),ps=S.people.map(()=>0),pl=S.people.map(()=>[]);let sub=0,un=0;
+ if(S.mode=='group'){its.forEach(i=>{const p=pm(i.price);for(let u=0;u<i.q;u++){const a=(i.as[u]||[]).filter(k=>k<S.people.length);if(!a.length){un+=p;continue}alloc(p,a.map(()=>1)).forEach((v,j)=>{ps[a[j]]+=v;pl[a[j]].push([i.name,v])})}});sub=ps.reduce((a,b)=>a+b,0)}else sub=raw();
+ const sv_=Math.round(sub*S.pct/100),ex=S.extras.map(e=>({n:e.n,v:pm(e.v0),eq:e.eq})),tot=sub+sv_+ex.reduce((a,e)=>a+e.v,0);let pp=null;
+ if(S.mode=='group'){const sa=alloc(sv_,ps);pp=ps.map((v,k)=>({sub:v,sv:sa[k],ex:0,l:pl[k]}));ex.forEach(e=>alloc(e.v,e.eq?S.people.map(()=>1):ps).forEach((v,k)=>pp[k].ex+=v));pp.forEach(p=>p.t=p.sub+p.sv+p.ex)}
+ return{sub,sv:sv_,ex,tot,pp,un}}
+/* ---- nézetek ---- */
+const logo=z=>`<svg width="${z}" height="${z}" viewBox="0 0 512 512"><rect width="512" height="512" rx="110" fill="#0E6B57"/><path d="M160 100H352Q366 100 366 114V380L344 400 322 380 300 400 278 380 256 400 234 380 212 400 190 380 168 400 146 380V114Q146 100 160 100Z" fill="#fff"/><text x="256" y="150" text-anchor="middle" font-family="Nunito,Arial,sans-serif" font-weight="800" font-size="40" letter-spacing="5" fill="#0A4A3D">ÉTLAP</text><rect x="178" y="164" width="156" height="6" rx="3" fill="#F4B942"/><g fill="#0E6B57" opacity=".85"><rect x="178" y="194" width="96" height="14" rx="7"/><rect x="178" y="230" width="140" height="14" rx="7"/><rect x="178" y="266" width="70" height="14" rx="7"/></g><circle cx="338" cy="336" r="60" fill="#F4B942"/><path d="M310 338l20 20 38-44" fill="none" stroke="#0A4A3D" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const hd=r=>`<div class="top">${logo(38)}<h1>Étlapőr</h1>${r||''}</div>`,bk=()=>`<button class="bk" data-a="bk">←</button>`;
+let dp;const stand=matchMedia('(display-mode:standalone)').matches||navigator.standalone;
+const inst=()=>stand?'':dp?`<div class="card ins"><span>Tedd ki a kezdőképernyőre</span><button data-a="inst">Telepítés</button></div>`:/iphone|ipad|ipod/i.test(navigator.userAgent)?`<div class="card sm">📲 Kezdőképernyőre: Megosztás ⬆️ → „Kezdőképernyőhöz adás”</div>`:'';
+const rowH=(i,k)=>`<div class="row ${i.q?'on':''}" data-n="${E(i.name.toLowerCase())}"><button class="ck" data-a="tg" data-i="${k}">${i.q?'✓':''}</button><div class="nm" data-a="tg" data-i="${k}">${E(i.name)}</div><div class="pr" data-a="ep" data-i="${k}">${fmt(pm(i.price))}</div>${i.q?`<div class="st"><button data-a="dn" data-i="${k}">−</button><b>${i.q} db</b><button data-a="up" data-i="${k}">+</button></div>`:''}</div>`;
+const barH=()=>{const n=S.items.filter(i=>i.q>0).length;return`<div><small>${n} tétel kiválasztva</small><b>${fmt(raw())}</b></div><button class="btn" data-a="next" ${n?'':'disabled'}>Tovább</button>`};
+const FT='<div class="ftd"><img src="data:image/png;base64,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" alt=""><span>&copy; Balazs - Digital</span></div>';
+const V={
+home:()=>hd(`<button class="bdg" data-a="lic">${licensed?'✓ Licencelt':'Próba: '+left()}</button>`)+`<p class="mut">Fotózd le az étlapot, pipáld ki, mit fogyasztottál — a Étlapőr pontosan kiszámolja a fizetnivalót. Rajtad nem fog ütni a pincér!</p>
+<button class="mode" data-a="mode" data-m="solo"><i>🍽️</i><span><b>Egyedül vagyok</b>Csak az én fogyasztásom</span></button>
+<button class="mode" data-a="mode" data-m="group"><i>👥</i><span><b>Többen vagyunk</b>Én fizetek — ki mennyivel tartozik?</span></button>${inst()}
+<div class="card sm">Szervizdíj / borravaló alapértelmezetten (opcionális): <input class="mini" type="number" inputmode="decimal" data-ch="dpct" value="${+g('pct')||''}" placeholder="0"> %</div>
+<p class="lnk"><a data-a="key">API-kulcs</a> · <a data-a="lic">Licenc</a></p>`,
+key:()=>`${bk()}<h2>Ingyenes AI-kulcs</h2><p class="mut">A Étlapőr a Google ingyenes AI-ját használja, ehhez egyszer kell egy saját kulcs (2 perc):</p>
+<ol class="mut"><li>Nyisd meg: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a></li><li>Lépj be a Google-fiókoddal</li><li>Koppints a <b>Create API key</b> gombra, másold ki a kulcsot</li><li>Illeszd be ide:</li></ol>
+<input id="kv" type="password" placeholder="AIza…" autocapitalize="none" autocomplete="off"><div id="km" class="mut"></div><button class="btn" data-a="savekey">Tesztelés és mentés</button>`,
+lic:()=>`${bk()}<h2>Licenc</h2>${licensed?'<div class="card ok">✅ A licenc aktiválva. Köszönjük!</div>':`<p class="mut">${expired?(tamper?'Az eszköz órája eltérést mutat, a próbaidő nem ellenőrizhető.':'A 4 napos próbaidő lejárt.'):'Próbaidő: még <b>'+left()+'</b>.'} Egyszeri licenc: <b>${E(C.PRICE)}</b>.</p>
+<input id="bm" type="email" placeholder="E-mail címed" autocapitalize="none">${C.BUY?'<button class="btn" data-a="buy">Fizetés kártyával</button>':''}<button class="btn ${C.BUY?'ghost':''}" data-a="order">Megrendelés e-mailben</button>
+<h3>Már van kódod?</h3><input id="lm" type="email" placeholder="E-mail (amire a kódot kaptad)" autocapitalize="none"><textarea id="lc" rows="3" placeholder="Aktiváló kód"></textarea><button class="btn" data-a="activ">Aktiválás</button><div id="lmsg" class="err" hidden></div>`}`,
+people:()=>`${bk()}<h2>Kik vagytok?</h2><p class="mut">Írd be a neveket (legalább kettő).</p><div class="fr"><input id="pn" placeholder="Név" autocomplete="off"><button class="btn" data-a="addp">+</button></div>
+<div class="chips">${S.people.map((p,i)=>`<button class="chip on" data-a="rmp" data-i="${i}">${E(p)}<x>✕</x></button>`).join('')}</div><button class="btn" data-a="pnext" ${S.people.length>1?'':'disabled'}>Tovább az étlaphoz</button>`,
+scan:()=>S.busy?`<div class="spin"></div><p class="mut" style="text-align:center">${E(S.busy)}</p>`:`${bk()}<h2>Étlap fotózása</h2><p class="mut">Fotózd le az étlapnak azt a részét, ahol a fogyasztott tételek szerepelnek. Több fotó is jöhet (max. 6).</p>
+<div class="shut"><button data-a="cam">📷</button></div><input type="file" id="cam" accept="image/*" capture="environment" hidden><input type="file" id="gal" accept="image/*" multiple hidden>
+<div class="th">${P.map((p,i)=>`<div><img src="data:${p.m};base64,${p.d}"><button data-a="rmph" data-i="${i}">✕</button></div>`).join('')}</div>${S.err?`<div class="err">${E(S.err)}</div>`:''}
+<button class="btn" data-a="doscan" ${P.length?'':'disabled'}>Beolvasás ✨</button><button class="btn ghost" data-a="gal">🖼️ Fotó a galériából</button><button class="btn ghost" data-a="manual">Kézzel írom be a tételeket</button>`,
+pick:()=>`${bk()}<h2>Mit fogyasztottál?</h2><p class="mut sm">Pipáld ki a tételt, a darabszámot állíthatod. Az árra koppintva javíthatod, ha az AI félrenézte.</p><input data-in="srch" placeholder="🔎 Keresés…" value="${E(S.q)}">
+<div id="list">${S.items.map(rowH).join('')}</div><div class="card"><b>+ Tétel kézzel</b><div class="fr"><input id="an" placeholder="Megnevezés"><input id="ap" type="number" inputmode="decimal" placeholder="Ár"><button class="btn" data-a="addi">+</button></div></div><div class="bar" id="bar">${barH()}</div>`,
+assign:()=>`${bk()}<h2>Ki mit evett?</h2><p class="mut sm">Koppints a névre. Ha többen osztoztok egy tételen, jelöld meg mindannyiukat — egyenlően osztjuk.</p>
+${S.items.map((it,k)=>it.q>0?Array.from({length:it.q},(_,u)=>{const a=it.as[u]||[];return`<div class="card ${a.length?'':'warn'}"><div class="ah"><b>${E(it.name)}${it.q>1?' · '+(u+1)+'. db':''}</b><span>${fmt(pm(it.price))}</span></div><div class="chips">${S.people.map((p,j)=>`<button class="chip ${a.includes(j)?'on':''}" data-a="as" data-i="${k}" data-u="${u}" data-k="${j}">${E(p)}</button>`).join('')}<button class="chip all" data-a="asall" data-i="${k}" data-u="${u}">Mindenki</button></div></div>`}).join(''):'').join('')}
+<div class="bar"><div><small>Még kiosztatlan</small><b>${fmt(calc().un)}</b></div><button class="btn" data-a="go2">Összesítés</button></div>`,
+bill:()=>{const c=calc(),G=S.mode=='group';return`${bk()}<h2>Fizetnivaló</h2>${G?c.pp.map((p,k)=>`<div class="card"><div class="pn"><b>${E(S.people[k])}</b><span>${fmt(p.t)}</span></div>${p.l.map(l=>`<div class="ln"><span>${E(l[0])}</span><span>${fmt(l[1])}</span></div>`).join('')}${p.sv?`<div class="ln"><span>Szervizdíj / borravaló</span><span>${fmt(p.sv)}</span></div>`:''}${p.ex?`<div class="ln"><span>Egyéb</span><span>${fmt(p.ex)}</span></div>`:''}</div>`).join('')+(c.un?`<div class="err">⚠️ Még ${fmt(c.un)} érték nincs kiosztva — <a data-a="bk">vissza a kiosztáshoz</a></div>`:''):
+`<div class="card">${S.items.filter(i=>i.q>0).map(i=>`<div class="ln"><span>${i.q}× ${E(i.name)}</span><span>${fmt(pm(i.price)*i.q)}</span></div>`).join('')}<div class="ln t"><span>Részösszeg</span><span>${fmt(c.sub)}</span></div>${c.sv?`<div class="ln"><span>Szervizdíj / borravaló (${S.pct}%)</span><span>${fmt(c.sv)}</span></div>`:''}${c.ex.map(e=>`<div class="ln"><span>${E(e.n)}</span><span>${fmt(e.v)}</span></div>`).join('')}</div>`}
+<div class="tot"><span>Összesen</span><b>${fmt(c.tot)}</b></div>
+<div class="card"><b>Szervizdíj / borravaló (opcionális)</b><div class="chips">${[0,5,10,12,15].map(v=>`<button class="chip ${S.pct==v?'on':''}" data-a="pct" data-v="${v}">${v?v+'%':'nincs'}</button>`).join('')}<input class="mini" type="number" inputmode="decimal" data-ch="pct" placeholder="más %" value="${[0,5,10,12,15].includes(S.pct)?'':S.pct}"></div>${S.svc&&S.pct!=S.svc?`<button class="chip on" data-a="pct" data-v="${S.svc}">Az étlap ${S.svc}% szervizdíjat ír — ráteszem</button>`:''}</div>
+<div class="card"><b>Egyéb tétel (pl. szervizdíj, kuvert)</b>${S.extras.map((e,i)=>`<div class="ln"><span>${E(e.n)}${e.eq?' (egyenlően)':''}</span><span>${fmt(pm(e.v0))} <a data-a="rme" data-i="${i}">✕</a></span></div>`).join('')}<div class="fr"><input id="en" placeholder="Megnevezés"><input id="ev" type="number" inputmode="decimal" placeholder="Összeg"><button class="btn" data-a="adde">+</button></div>${G?'<label class="sm"><input type="checkbox" id="eq" style="width:auto;margin:0 6px 0 0"> egyenlően osztva (különben arányosan)</label>':''}</div>
+<button class="btn ghost" data-a="share">📤 Összesítő küldése</button><button class="btn ghost" data-a="newb">Új számla</button>`}};
+function R(){const lock=ready&&expired&&!licensed;let sc=lock&&!['lic','home'].includes(S.scr)?'lic':S.scr;if(lock&&sc=='home')sc='lic';$('#app').innerHTML=(V[sc]||V.home)()+FT;sv()}
+function go(x){S.scr=x;history.pushState({s:x},'');R();scrollTo(0,0)}
+function pl(){const l=$('#list');if(!l)return R();l.innerHTML=S.items.map(rowH).join('');$('#bar').innerHTML=barH();flt();sv()}
+const flt=()=>document.querySelectorAll('#list .row').forEach(r=>r.hidden=!!S.q&&!r.dataset.n.includes(S.q));
+const shrink=f=>new Promise((ok,no)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok({m:'image/jpeg',d:c.toDataURL('image/jpeg',.85).split(',')[1]})};im.onerror=no;im.src=u});
+async function addPh(fl){S.err='';for(const f of fl){if(P.length>=6)break;try{P.push(await shrink(f))}catch(e){S.err='Ezt a fotót nem sikerült betölteni.'}}R()}
+const A={
+ bk(){history.back()},key(){go('key')},lic(){go('lic')},
+ mode(d){S.mode=d.m;S.items=[];S.extras=[];S.pct=+g('pct')||0;S.q='';S.svc=0;S.err='';P=[];go(d.m=='group'?'people':'scan')},
+ addp(){const v=$('#pn').value.trim();if(v&&!S.people.includes(v))S.people.push(v);R();const i=$('#pn');i&&i.focus()},rmp(d){S.people.splice(+d.i,1);R()},pnext(){go('scan')},
+ cam(){$('#cam').click()},gal(){$('#gal').click()},rmph(d){P.splice(+d.i,1);R()},manual(){go('pick')},
+ async doscan(){await chk();if(expired&&!licensed)return go('lic');if(!g('key'))return go('key');S.busy='Az étlap beolvasása…';S.err='';R();
+  try{const r=await ai([...P.map(p=>({inline_data:{mime_type:p.m,data:p.d}})),{text:PROMPT}]),seen=new Set(S.items.map(i=>i.name.toLowerCase()+'|'+i.price));let n=0;
+   (r.items||[]).forEach(x=>{const p=num(x.price),nm=String(x.name||'').trim();if(!nm||!(p>=0))return;const k=nm.toLowerCase()+'|'+p;if(seen.has(k))return;seen.add(k);S.items.push({name:nm,price:p,q:0,as:[]});n++});
+   if(r.currency&&String(r.currency).trim())S.cur=String(r.currency).trim();S.svc=num(r.service)||0;S.busy='';
+   if(!S.items.length){S.err='Nem találtam tételt a fotókon. Fotózz közelebbről, élesebben, vagy írd be kézzel.';R();return}P=[];go('pick')}catch(e){S.busy='';S.err=e.msg||'Ismeretlen hiba.';R()}},
+ async savekey(){const k=$('#kv').value.trim();if(!k)return;$('#km').textContent='Tesztelés…';try{const ms=await models(k);if(!ms.length)throw{st:-2};s('key',k);s('models',JSON.stringify(ms));history.back();setTimeout(()=>{S.mode?R():0},0)}catch(e){$('#km').textContent=er(e.st).msg}},
+ tg(d){const i=S.items[+d.i];i.q=i.q?0:1;pl()},up(d){S.items[+d.i].q++;pl()},dn(d){const i=S.items[+d.i];i.q=Math.max(0,i.q-1);pl()},
+ ep(d){const i=S.items[+d.i],v=prompt('Ár ('+S.cur+'):',i.price);if(v!==null&&num(v)>=0){i.price=num(v);pl()}},
+ addi(){const n=$('#an').value.trim(),p=num($('#ap').value);if(!n||!(p>=0))return;S.items.unshift({name:n,price:p,q:1,as:[]});R()},
+ next(){go(S.mode=='group'?'assign':'bill')},go2(){go('bill')},
+ as(d){const it=S.items[+d.i],u=+d.u,k=+d.k,a=it.as[u]=it.as[u]||[],x=a.indexOf(k);x<0?a.push(k):a.splice(x,1);R()},asall(d){S.items[+d.i].as[+d.u]=S.people.map((_,k)=>k);R()},
+ pct(d){S.pct=+d.v;R()},adde(){const v=num($('#ev').value);if(!(v>0))return;S.extras.push({n:$('#en').value.trim()||'Egyéb',v0:v,eq:!!($('#eq')&&$('#eq').checked)});R()},rme(d){S.extras.splice(+d.i,1);R()},
+ newb(){S.items=[];S.extras=[];S.mode='';P=[];go('home')},
+ async share(){const c=calc();let t='Étlapőr – összesítő\n';if(S.mode=='group')S.people.forEach((p,k)=>t+=p+': '+fmt(c.pp[k].t)+'\n');else S.items.filter(i=>i.q>0).forEach(i=>t+=i.q+'× '+i.name+'\n');t+='Összesen: '+fmt(c.tot);
+  try{if(navigator.share)return await navigator.share({text:t})}catch(e){if(e.name=='AbortError')return}try{await navigator.clipboard.writeText(t);alert('Kimásolva.')}catch(e){prompt('Másold ki:',t)}},
+ buy(){const m=$('#bm').value.trim();window.open(C.BUY+(C.BUY.includes('?')?'&':'?')+'prefilled_email='+encodeURIComponent(m),'_blank','noopener')},
+ order(){const m=$('#bm').value.trim();location.href='mailto:'+C.MAIL+'?subject='+encodeURIComponent('Étlapőr megrendelés')+'&body='+encodeURIComponent('Szia! Megrendelném a Étlapőr appot ('+C.PRICE+')'+(m?'. Ezen az e-mail címen várom az aktiváló kódot: '+m:'.'))},
+ async activ(){const r=await act($('#lm').value,$('#lc').value),b=$('#lmsg');if(r){b.hidden=false;b.textContent=r}else{alert('Licenc aktiválva ✓ Köszönjük a vásárlást!');S.scr='home';R()}},
+ async inst(){dp.prompt();await dp.userChoice;dp=null;R()}};
+const CH={pct(v){S.pct=Math.max(0,num(v)||0);R()},dpct(v){s('pct',Math.max(0,num(v)||0))}};
+document.addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(a&&A[a.dataset.a])A[a.dataset.a](a.dataset)});
+document.addEventListener('change',e=>{const t=e.target;if(t.type=='file'){addPh(t.files);t.value=''}else if(t.dataset.ch)CH[t.dataset.ch](t.value)});
+document.addEventListener('input',e=>{if(e.target.dataset.in=='srch'){S.q=e.target.value.toLowerCase();flt()}});
+addEventListener('popstate',e=>{if(e.state&&e.state.s){S.scr=e.state.s;R()}});
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;if(S.scr=='home')R()});
+(async()=>{if(!HOK()){$('#app').innerHTML=hd()+`<div class="card">Ez az app csak a hivatalos címen működik:<br><a href="${APP_URL}">${APP_URL}</a></div>`;return}
+ await chk();const h=new URLSearchParams(location.hash.slice(1));if(h.get('e')&&h.get('a')){const m=await act(h.get('e'),h.get('a'));try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}alert(m||'Licenc aktiválva ✓ Köszönjük a vásárlást!')}
+ const sc=V[S.scr]?S.scr:'home';history.replaceState({s:'home'},'');if(sc!='home')history.pushState({s:sc},'');S.scr=sc;ready=1;R();
+ setInterval(async()=>{await chk();if(expired&&!licensed&&S.scr!='lic')R()},1e4);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()})})();
+</script></body></html>
